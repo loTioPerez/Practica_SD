@@ -1,1 +1,1 @@
-"""Entry point placeholder for asynchronous purchase workers."""
+"""Punto de entrada ejecutable para workers de procesamiento."""

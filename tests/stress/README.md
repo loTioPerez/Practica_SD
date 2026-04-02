@@ -1,3 +1,3 @@
-# Stress Tests
+# Stress
 
-Load, scalability, and hotspot contention scenarios belong here.
+Escenarios de carga, escalado y alta contencion.

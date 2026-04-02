@@ -1,1 +1,1 @@
-"""Core business layer shared by all communication architectures."""
+"""Nucleo de negocio compartido por todas las arquitecturas."""

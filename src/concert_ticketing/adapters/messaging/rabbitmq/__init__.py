@@ -1,1 +1,1 @@
-"""RabbitMQ integration package."""
+"""Integracion con RabbitMQ para productores y workers."""

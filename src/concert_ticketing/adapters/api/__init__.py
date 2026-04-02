@@ -1,1 +1,1 @@
-"""HTTP-facing adapters for the direct communication architecture."""
+"""Adaptadores de entrada HTTP para la arquitectura directa."""

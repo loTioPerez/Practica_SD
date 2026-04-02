@@ -1,7 +1,4 @@
 # Tests
 
-Test suites are separated by scope:
-
-- `unit/` for pure logic
-- `integration/` for service and backend interaction
-- `stress/` for benchmark-style or contention-oriented testing
+Las pruebas se organizan por alcance para separar logica pura, integracion,
+arranque basico y carga.

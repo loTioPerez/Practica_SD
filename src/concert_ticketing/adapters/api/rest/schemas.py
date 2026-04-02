@@ -1,1 +1,1 @@
-"""Future transport schemas for HTTP requests and responses."""
+"""Esquemas HTTP de peticion y respuesta para la API REST."""

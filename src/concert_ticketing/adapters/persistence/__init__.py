@@ -1,1 +1,1 @@
-"""Persistence adapters for the consistency backend choices."""
+"""Adaptadores de persistencia para Redis y otros backends."""

@@ -1,1 +1,1 @@
-"""Direct communication API application package."""
+"""Aplicacion ejecutable de la arquitectura directa."""

@@ -1,1 +1,1 @@
-"""Messaging adapters for indirect communication."""
+"""Adaptadores de mensajeria para la arquitectura indirecta."""

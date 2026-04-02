@@ -1,1 +1,1 @@
-"""Indirect communication gateway application package."""
+"""Aplicacion ejecutable de la puerta de entrada indirecta."""

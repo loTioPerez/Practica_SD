@@ -1,53 +1,55 @@
-# Scalable Concert Ticket Acquisition System
+# Sistema Escalable de Adquisicion de Entradas
 
-Python project skeleton for the distributed systems assignment.
+Esqueleto inicial del proyecto para la practica de sistemas distribuidos.
 
-At this stage the repository only contains the initial structure of the
-project. No business logic has been implemented yet.
+En este punto solo se ha definido la estructura base del repositorio. No hay
+logica de negocio implementada todavia.
 
-## Proposed Structure
+## Estructura elegida
 
-```text
-Practica_SD/
-  benchmarks/
-  deploy/
-    aws/
-    docker/
-    nginx/
-    systemd/
-  docs/
-    diagrams/
-    results/
-  scripts/
-  src/
-    concert_ticketing/
-      adapters/
-      apps/
-      config/
-      core/
-  tests/
-    integration/
-    stress/
-    unit/
-```
+El repositorio combina dos objetivos:
 
-## Main Design Decision
+- un nucleo compartido para no duplicar la logica de venta
+- una organizacion fuerte para despliegue, benchmarks, analisis y memoria
 
-The repository is organized around one shared Python package,
-`concert_ticketing`, so both architectures can reuse the same core
-ticket-purchase logic.
+Las piezas principales son:
 
-- `core/`: domain models, application use cases, and ports/interfaces
-- `adapters/`: REST, RabbitMQ, persistence, and metrics integrations
-- `apps/`: runnable entry points for the direct API, indirect gateway,
-  asynchronous worker, and benchmark runner
-- `deploy/`: deployment artifacts for AWS VMs and local orchestration
-- `tests/`: unit, integration, and stress test suites
-- `docs/`: diagrams, benchmark outputs, and report material
+- `src/concert_ticketing/core/`: dominio, servicios y puertos
+- `src/concert_ticketing/adapters/`: REST, RabbitMQ, persistencia y observabilidad
+- `src/concert_ticketing/apps/`: puntos de entrada ejecutables
+- `docs/`: arquitectura, runbooks y material de la memoria
+- `deploy/`: AWS, systemd, NGINX y RabbitMQ
+- `benchmarks/`: entradas originales, escenarios generados y salidas
+- `metrics/` y `logs/`: artefactos de ejecucion
+- `tests/`: pruebas unitarias, de integracion, smoke y stress
 
-## Notes
+## Decision arquitectonica
 
-- The benchmark files are kept under `benchmarks/`.
-- The project uses a `src/` layout so imports stay explicit and clean.
-- Placeholder modules have been created to define the future code map
-  without implementing behavior yet.
+La comparacion entre arquitectura directa e indirecta debe hacerse sobre la
+misma logica de negocio. Por eso se mantiene un paquete Python comun,
+`concert_ticketing`, y se separan claramente:
+
+- `core/` para las reglas del sistema
+- `ports/` para las interfaces de acceso a infraestructura
+- `adapters/` para las implementaciones concretas
+- `apps/` para ensamblar cada servicio ejecutable
+
+## Simplificacion aplicada
+
+Para que el proyecto sea mas facil de entender y mantener desde el principio,
+la estructura se ha simplificado con estos criterios:
+
+- Redis queda como backend principal de consistencia.
+- PostgreSQL se elimina por ahora para no abrir una segunda linea tecnica.
+- El dominio se mantiene ligero: `models.py` y `enums.py` en vez de una
+  separacion mas ceremoniosa.
+- La mensajeria RabbitMQ se trata como infraestructura de entrada, no como una
+  abstraccion adicional dentro del core.
+- La API REST construye la aplicacion mediante `app_factory.py` para evitar
+  duplicidad de `main.py`.
+
+## Estado actual
+
+- La estructura del proyecto ya esta preparada.
+- La documentacion base se ha dejado en espanol.
+- Los archivos son placeholders y serviran como mapa para el desarrollo.

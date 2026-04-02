@@ -1,1 +1,1 @@
-"""Future benchmark file parser and workload-loading helpers."""
+"""Parser compartido de ficheros benchmark y cargas derivadas."""

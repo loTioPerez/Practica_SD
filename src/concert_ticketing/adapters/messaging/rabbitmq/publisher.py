@@ -1,1 +1,1 @@
-"""Future RabbitMQ publisher for purchase request submission."""
+"""Publicador RabbitMQ para enviar solicitudes de compra."""

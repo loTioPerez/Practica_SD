@@ -1,1 +1,1 @@
-"""Future enumerations for ticket modes, statuses, and failure reasons."""
+"""Enumeraciones del dominio: modos, estados y motivos de fallo."""

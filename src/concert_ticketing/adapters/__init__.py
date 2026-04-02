@@ -1,1 +1,1 @@
-"""Adapters that connect the core to transport and storage technologies."""
+"""Adaptadores de transporte, persistencia y observabilidad."""

@@ -1,1 +1,1 @@
-"""Future RabbitMQ consumer for worker-side request processing."""
+"""Consumidor RabbitMQ para el procesamiento en workers."""

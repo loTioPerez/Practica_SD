@@ -1,3 +1,3 @@
-# AWS Deployment
+# AWS
 
-Place AWS Academy VM setup notes, networking decisions, and runbooks here.
+Documentacion y scripts para preparar las maquinas virtuales del entorno.

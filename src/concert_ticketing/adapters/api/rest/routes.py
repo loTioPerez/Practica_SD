@@ -1,1 +1,1 @@
-"""Future REST routes and controller wiring for direct ticket purchases."""
+"""Rutas REST para compras, salud y consulta de resultados."""

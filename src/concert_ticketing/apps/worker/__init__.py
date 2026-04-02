@@ -1,1 +1,1 @@
-"""Asynchronous worker application package."""
+"""Aplicacion ejecutable para workers asincronos."""

@@ -1,1 +1,1 @@
-"""Port definitions that isolate the core from external systems."""
+"""Puertos que aislan el nucleo del detalle de infraestructura."""

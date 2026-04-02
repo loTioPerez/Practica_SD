@@ -1,4 +1,3 @@
 # systemd
 
-Unit files for API nodes, gateway nodes, workers, and supporting services
-will be stored here.
+Unidades de servicio para levantar y supervisar cada componente.

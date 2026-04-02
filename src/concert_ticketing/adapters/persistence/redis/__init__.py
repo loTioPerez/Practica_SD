@@ -1,1 +1,1 @@
-"""Redis-backed persistence adapter package."""
+"""Persistencia basada en Redis como backend principal del proyecto."""

@@ -1,6 +1,9 @@
 # Benchmarks
 
-This directory stores the benchmark input files provided by the assignment.
+Esta carpeta separa claramente:
 
-- Keep the original files unchanged.
-- Any hotspot or derived scenarios should be generated separately.
+- entradas originales del enunciado
+- escenarios generados, como hotspot
+- salidas y resumenes de ejecucion
+
+Los archivos originales deben mantenerse sin modificar.

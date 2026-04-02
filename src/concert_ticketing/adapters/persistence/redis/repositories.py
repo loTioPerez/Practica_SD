@@ -1,1 +1,1 @@
-"""Future Redis repository implementations for alternative experiments."""
+"""Repositorios Redis para inventario, idempotencia y resultados."""

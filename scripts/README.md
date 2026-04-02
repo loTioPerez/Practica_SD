@@ -1,4 +1,4 @@
 # Scripts
 
-Helper scripts for setup, benchmark execution, and result collection will be
-added here.
+Scripts operativos para inicializar estado, lanzar benchmarks, escalar workers
+y recopilar resultados.

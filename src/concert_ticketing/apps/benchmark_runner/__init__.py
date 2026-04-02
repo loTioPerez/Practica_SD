@@ -1,1 +1,1 @@
-"""Benchmark tooling package."""
+"""Herramientas compartidas para ejecutar benchmarks."""

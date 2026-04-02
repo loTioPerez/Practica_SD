@@ -1,1 +1,1 @@
-"""REST transport adapter package."""
+"""Adaptador REST de la arquitectura directa."""

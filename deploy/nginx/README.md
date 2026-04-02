@@ -1,4 +1,3 @@
 # NGINX
 
-Reserve this directory for the direct architecture load-balancer
-configuration.
+Configuracion del balanceador y punto unico de entrada para REST.

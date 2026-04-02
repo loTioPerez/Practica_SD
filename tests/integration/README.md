@@ -1,4 +1,3 @@
-# Integration Tests
+# Integration
 
-End-to-end behavior across adapters, storage, and communication layers
-belongs here.
+Pruebas extremo a extremo entre adaptadores, almacenamiento y transporte.

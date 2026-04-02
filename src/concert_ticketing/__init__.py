@@ -1,1 +1,1 @@
-"""Shared package for the concert ticketing project."""
+"""Paquete principal del sistema de venta de entradas."""

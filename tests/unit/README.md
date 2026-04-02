@@ -1,3 +1,3 @@
-# Unit Tests
+# Unit
 
-Small, isolated tests for domain rules and application services belong here.
+Pruebas pequenas y aisladas sobre reglas de dominio y servicios internos.

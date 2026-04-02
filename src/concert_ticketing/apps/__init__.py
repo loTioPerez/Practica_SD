@@ -1,1 +1,1 @@
-"""Runnable application entry points for the project services."""
+"""Puntos de entrada ejecutables para cada servicio del sistema."""

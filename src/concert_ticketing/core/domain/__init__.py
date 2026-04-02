@@ -1,1 +1,1 @@
-"""Domain models and enums for ticket acquisition flows."""
+"""Modelos y tipos de dominio para la venta de entradas."""
