@@ -1,1 +1,8 @@
-# Configuracion del backend Redis.
+redis:
+  host: localhost
+  port: 6379
+  db: 0
+  decode_responses: true
+  socket_timeout: 5.0
+  socket_connect_timeout: 5.0
+  retry_on_timeout: true
