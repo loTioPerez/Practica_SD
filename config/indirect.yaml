@@ -1,1 +1,16 @@
-# Configuracion especifica de la arquitectura indirecta.
+# Configuracion especifica de la arquitectura indirecta (RabbitMQ).
+
+indirect_gateway:
+  host: 0.0.0.0
+  port: 8080
+
+worker:
+  concurrency: 2
+  prefetch_count: 1
+
+queues:
+  purchase_requests: purchase_requests
+  reply_prefix: reply_
+
+timeout:
+  response_seconds: 30
