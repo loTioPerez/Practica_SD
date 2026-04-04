@@ -1,1 +1,7 @@
-# Configuracion de RabbitMQ.
+rabbitmq:
+  host: localhost
+  port: 5672
+  user: guest
+  password: guest
+  vhost: /
+  management_port: 15672
