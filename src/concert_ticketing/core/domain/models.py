@@ -1,8 +1,9 @@
-"""Modelos principales del dominio: peticiones, resultados y datos de compra."""
+"""Modelos de dominio para compras, resultados y asientos."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Optional
 
 from .enums import PurchaseStatus, RejectionReason, TicketType
@@ -10,50 +11,47 @@ from .enums import PurchaseStatus, RejectionReason, TicketType
 
 @dataclass(frozen=True)
 class PurchaseRequest:
-    """Solicitud de compra de una entrada."""
+    """Solicitud de compra emitida por un cliente."""
+
     client_id: str
     request_id: str
-    ticket_type: TicketType
-    seat_id: Optional[int] = None  # Solo para numbered
-
-    def __post_init__(self) -> None:
-        if self.ticket_type == TicketType.NUMBERED and self.seat_id is None:
-            raise ValueError("seat_id es obligatorio para tickets numerados")
+    seat_id: Optional[int] = None
 
 
 @dataclass(frozen=True)
 class PurchaseResult:
-    """Resultado de una operación de compra."""
+    """Resultado devuelto tras procesar una solicitud de compra."""
+
     status: PurchaseStatus
     request_id: str
     client_id: str
-    reason: str = "ok"
-    ticket_type: Optional[TicketType] = None
+    reason: str
+    ticket_type: Optional[str] = None
     seat_id: Optional[int] = None
     remaining: Optional[int] = None
     duplicate: bool = False
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     @property
     def success(self) -> bool:
-        """Indica si la compra fue exitosa."""
         return self.status == PurchaseStatus.ACCEPTED
 
     @staticmethod
     def accepted(
         request_id: str,
         client_id: str,
-        ticket_type: TicketType,
+        ticket_type: TicketType | str,
         seat_id: Optional[int] = None,
         remaining: Optional[int] = None,
         duplicate: bool = False,
     ) -> PurchaseResult:
-        """Crea un resultado exitoso."""
+        tt = ticket_type.value if isinstance(ticket_type, TicketType) else ticket_type
         return PurchaseResult(
             status=PurchaseStatus.ACCEPTED,
             request_id=request_id,
             client_id=client_id,
             reason="ok",
-            ticket_type=ticket_type,
+            ticket_type=tt,
             seat_id=seat_id,
             remaining=remaining,
             duplicate=duplicate,
@@ -63,18 +61,21 @@ class PurchaseResult:
     def rejected(
         request_id: str,
         client_id: str,
-        reason: str,
-        ticket_type: Optional[TicketType] = None,
+        reason: RejectionReason | str,
+        ticket_type: TicketType | str | None = None,
         seat_id: Optional[int] = None,
         duplicate: bool = False,
     ) -> PurchaseResult:
-        """Crea un resultado de rechazo."""
+        r = reason.value if isinstance(reason, RejectionReason) else reason
+        tt = None
+        if ticket_type is not None:
+            tt = ticket_type.value if isinstance(ticket_type, TicketType) else ticket_type
         return PurchaseResult(
             status=PurchaseStatus.REJECTED,
             request_id=request_id,
             client_id=client_id,
-            reason=reason,
-            ticket_type=ticket_type,
+            reason=r,
+            ticket_type=tt,
             seat_id=seat_id,
             duplicate=duplicate,
         )
@@ -82,8 +83,8 @@ class PurchaseResult:
 
 @dataclass(frozen=True)
 class SeatInfo:
-    """Información sobre el estado de un asiento numerado."""
-    seat_id: int
-    status: str  # 'available' o 'sold:<client_id>'
-    owner: Optional[str] = None  # client_id del comprador si está vendido
+    """Informacion sobre el estado de un asiento numerado."""
 
+    seat_id: int
+    status: str
+    owner: Optional[str] = None

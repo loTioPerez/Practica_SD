@@ -1,1 +1,1 @@
-"""Integracion con RabbitMQ para productores y workers."""
+"""Adaptador de mensajeria RabbitMQ."""

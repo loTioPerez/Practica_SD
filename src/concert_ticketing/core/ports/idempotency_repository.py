@@ -1,4 +1,4 @@
-"""Puerto para almacenar y consultar solicitudes ya procesadas."""
+"""Puerto abstracto para operaciones de idempotencia."""
 
 from __future__ import annotations
 
@@ -7,19 +7,16 @@ from typing import Any, Optional
 
 
 class IdempotencyRepository(ABC):
-    """Interface para el registro de idempotencia.
-
-    NOTA: En la implementación actual con Lua, la idempotencia se maneja
-    dentro del propio script atómico. Esta interface existe para
-    extensibilidad futura y consultas de estado.
-    """
-
-    @abstractmethod
-    def get_request_result(self, request_id: str) -> Optional[dict[str, Any]]:
-        """Consulta el resultado almacenado de un request_id previo."""
-        ...
+    """Interfaz para prevenir el procesamiento duplicado de requests."""
 
     @abstractmethod
     def request_exists(self, request_id: str) -> bool:
         """Comprueba si un request_id ya fue procesado."""
-        ...
+
+    @abstractmethod
+    def get_request_result(self, request_id: str) -> Optional[dict[str, Any]]:
+        """Devuelve el resultado guardado para un request_id, o None."""
+
+    @abstractmethod
+    def store_result(self, request_id: str, result: dict[str, Any]) -> None:
+        """Guarda el resultado de un request_id procesado."""

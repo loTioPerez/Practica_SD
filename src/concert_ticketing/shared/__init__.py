@@ -1,1 +1,1 @@
-"""Utilidades compartidas entre servicios y adaptadores."""
+"""Utilidades compartidas del sistema de ticketing."""

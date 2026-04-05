@@ -49,6 +49,10 @@ def parse_benchmark_file(path: str | Path) -> list[BenchmarkOperation]:
             if not line:
                 continue
 
+            # Ignorar líneas de comentario
+            if line.startswith("#"):
+                continue
+
             numbered = parse_numbered_line(line)
             if numbered is not None:
                 client_id, seat_id, request_id = numbered

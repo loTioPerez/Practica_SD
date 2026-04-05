@@ -1,1 +1,1 @@
-"""Modelos y tipos de dominio para la venta de entradas."""
+"""Dominio del sistema de compra de entradas."""

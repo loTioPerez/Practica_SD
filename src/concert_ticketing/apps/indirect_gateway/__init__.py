@@ -1,1 +1,1 @@
-"""Aplicacion ejecutable de la puerta de entrada indirecta."""
+"""Gateway indirecto (RabbitMQ)."""

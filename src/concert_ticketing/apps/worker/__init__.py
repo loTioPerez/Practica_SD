@@ -1,1 +1,1 @@
-"""Aplicacion ejecutable para workers asincronos."""
+"""Worker de procesamiento de compras via RabbitMQ."""

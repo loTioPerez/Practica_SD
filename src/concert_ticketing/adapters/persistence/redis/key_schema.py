@@ -1,26 +1,38 @@
-"""Esquema de claves Redis para compras, asientos e idempotencia."""
+"""Esquema de claves Redis para el sistema de ticketing."""
+
+from __future__ import annotations
 
 
 class KeySchema:
-    """Genera claves Redis consistentes para todo el sistema."""
+    """Genera las claves Redis siguiendo un esquema consistente."""
 
-    # ---- Unnumbered ----
-    UNNUMBERED_AVAILABLE = "tickets:unnumbered:available"
+    PREFIX = "ct"
 
-    # ---- Numbered ----
-    NUMBERED_AVAILABLE = "tickets:numbered:available"
+    # --- Inventario no numerado ---
+    @staticmethod
+    def unnumbered_counter() -> str:
+        return f"{KeySchema.PREFIX}:unnumbered:available"
+
+    # --- Inventario numerado ---
+    @staticmethod
+    def numbered_seat(seat_id: int) -> str:
+        return f"{KeySchema.PREFIX}:numbered:seat:{seat_id}"
 
     @staticmethod
-    def seat_status(seat_id: int) -> str:
-        """Clave para el estado de un asiento: tickets:numbered:{id}:status"""
-        return f"tickets:numbered:{seat_id}:status"
+    def numbered_available_set() -> str:
+        return f"{KeySchema.PREFIX}:numbered:available_set"
 
+    # --- Idempotencia ---
     @staticmethod
-    def request(request_id: str) -> str:
-        """Clave de idempotencia: requests:{request_id}"""
-        return f"requests:{request_id}"
+    def idempotency(request_id: str) -> str:
+        return f"{KeySchema.PREFIX}:idempotency:{request_id}"
 
+    # --- Resultados por cliente ---
     @staticmethod
     def client_purchases(client_id: str) -> str:
-        """Historial de compras de un cliente: purchases:{client_id}"""
-        return f"purchases:{client_id}"
+        return f"{KeySchema.PREFIX}:client:{client_id}:purchases"
+
+    # --- Claves de control ---
+    @staticmethod
+    def all_keys_pattern() -> str:
+        return f"{KeySchema.PREFIX}:*"

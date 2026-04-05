@@ -1,9 +1,14 @@
-"""Worker que consume peticiones de RabbitMQ y las procesa con PurchaseService."""
+"""Worker que consume peticiones de RabbitMQ y las procesa con PurchaseService.
+
+Incluye retry logic para manejar RabbitMQ no disponible al arrancar
+y reconexión automática ante desconexiones.
+"""
 
 from __future__ import annotations
 
 import signal
 import sys
+import time
 from typing import Any
 
 import pika
@@ -27,6 +32,11 @@ from concert_ticketing.shared.logger import get_logger
 from concert_ticketing.shared.serialization import purchase_result_to_dict
 
 logger = get_logger(__name__)
+
+# ---- Constantes de retry ----
+MAX_RETRIES = 10
+RETRY_BASE_DELAY = 2   # segundos (back-off: 2, 4, 8, ...)
+RETRY_MAX_DELAY = 30    # tope de espera entre reintentos
 
 
 class PurchaseProcessor:
@@ -77,31 +87,76 @@ def build_service(config: AppConfig) -> PurchaseService:
     )
 
 
+def _connect_rabbitmq_with_retry(rmq_config):
+    """Intenta conectar a RabbitMQ con reintentos y back-off exponencial."""
+    delay = RETRY_BASE_DELAY
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            conn = create_rabbitmq_connection(rmq_config)
+            logger.info(
+                "Conexión RabbitMQ establecida (intento %d/%d)",
+                attempt, MAX_RETRIES,
+            )
+            return conn
+        except Exception as exc:
+            if attempt == MAX_RETRIES:
+                logger.error(
+                    "No se pudo conectar a RabbitMQ tras %d intentos: %s",
+                    MAX_RETRIES, exc,
+                )
+                raise
+            logger.warning(
+                "RabbitMQ no disponible (intento %d/%d): %s — reintentando en %ds...",
+                attempt, MAX_RETRIES, exc, delay,
+            )
+            time.sleep(delay)
+            delay = min(delay * 2, RETRY_MAX_DELAY)
+
+
+_shutdown_requested = False
+
+
 def main() -> None:
-    """Punto de entrada del worker."""
+    """Punto de entrada del worker con retry y reconexión."""
+    global _shutdown_requested
+
     config = AppConfig.from_env()
     service = build_service(config)
     processor = PurchaseProcessor(service)
 
-    connection = create_rabbitmq_connection(config.rabbitmq)
-    channel = create_channel(connection)
-    setup_queues(channel)
-
-    consumer = RabbitMQConsumer(channel)
-
     def handle_signal(signum: int, frame: Any) -> None:
+        global _shutdown_requested
         logger.info("Señal recibida (%s), cerrando worker...", signum)
-        try:
-            channel.stop_consuming()
-        except Exception:
-            pass
-        sys.exit(0)
+        _shutdown_requested = True
 
     signal.signal(signal.SIGINT, handle_signal)
     signal.signal(signal.SIGTERM, handle_signal)
 
-    logger.info("Worker iniciado. Consumiendo peticiones de compra...")
-    consumer.consume(processor.process_message)
+    # Bucle principal con reconexión
+    while not _shutdown_requested:
+        try:
+            connection = _connect_rabbitmq_with_retry(config.rabbitmq)
+            channel = create_channel(connection)
+            setup_queues(channel)
+
+            consumer = RabbitMQConsumer(channel)
+
+            logger.info("Worker iniciado. Consumiendo peticiones de compra...")
+            consumer.consume(processor.process_message)
+
+        except KeyboardInterrupt:
+            logger.info("Worker interrumpido por teclado.")
+            break
+        except Exception as exc:
+            if _shutdown_requested:
+                break
+            logger.exception(
+                "Worker desconectado: %s — reconectando en 5s...", exc,
+            )
+            time.sleep(5)
+
+    logger.info("Worker finalizado.")
+    sys.exit(0)
 
 
 if __name__ == "__main__":

@@ -1,365 +1,293 @@
-"""Repositorios Redis para inventario, idempotencia y resultados.
-
-Implementación 100% Python usando WATCH/MULTI/EXEC (optimistic locking)
-para garantizar atomicidad sin scripts Lua.
-"""
+"""Implementacion Redis de los repositorios usando WATCH/MULTI/EXEC."""
 
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+import time
 from typing import Any, Optional
 
-import redis as redis_lib
-from redis.exceptions import WatchError
+import redis
+from redis import WatchError
 
-from ....core.domain.enums import PurchaseStatus, TicketType
+from ....core.domain.enums import (
+    PurchaseStatus,
+    RejectionReason,
+    SeatStatus,
+    TicketType,
+)
 from ....core.domain.models import PurchaseResult, SeatInfo
-from ....core.ports.inventory_repository import InventoryRepository
 from ....core.ports.idempotency_repository import IdempotencyRepository
+from ....core.ports.inventory_repository import InventoryRepository
 from ....core.ports.result_repository import ResultRepository
 from ....shared.logger import get_logger
-
+from ....shared.serialization import purchase_result_to_dict
 from .key_schema import KeySchema
 
 logger = get_logger(__name__)
 
-# Límite de reintentos para evitar bucles infinitos
-MAX_RETRIES = 100
+_MAX_RETRIES = 5
 
 
 class RedisInventoryRepository(InventoryRepository):
-    """Implementación Redis del repositorio de inventario.
+    """Repositorio de inventario respaldado por Redis con transacciones optimistas."""
 
-    Todas las operaciones de compra usan WATCH/MULTI/EXEC (optimistic locking)
-    para garantizar atomicidad y consistencia bajo concurrencia.
-    """
-
-    def __init__(self, client: redis_lib.Redis) -> None:
+    def __init__(self, client: redis.Redis) -> None:
         self._client = client
 
-    # ---- Compras atómicas ----
+    # ---- compra no numerada (WATCH/MULTI/EXEC) ----
 
     def buy_unnumbered(self, client_id: str, request_id: str) -> PurchaseResult:
-        """Compra atómica de ticket no numerado via WATCH/MULTI/EXEC.
+        counter_key = KeySchema.unnumbered_counter()
+        idemp_key = KeySchema.idempotency(request_id)
 
-        1. WATCH sobre la clave de idempotencia y el contador de disponibles.
-        2. Si ya existe el request_id, devuelve resultado previo (duplicado).
-        3. Si hay tickets disponibles, decrementa atómicamente.
-        4. Registra compra en hash de idempotencia e historial del cliente.
-        """
-        now = datetime.now(timezone.utc).isoformat()
-        request_key = KeySchema.request(request_id)
-        avail_key = KeySchema.UNNUMBERED_AVAILABLE
-        purchases_key = KeySchema.client_purchases(client_id)
-
-        for attempt in range(MAX_RETRIES):
+        for attempt in range(_MAX_RETRIES):
             try:
-                pipe = self._client.pipeline()
-                pipe.watch(request_key, avail_key)
+                with self._client.pipeline() as pipe:
+                    pipe.watch(counter_key, idemp_key)
 
-                # Verificar idempotencia
-                existing = pipe.exists(request_key)
-                if existing:
-                    prev_data = pipe.hgetall(request_key)
-                    pipe.unwatch()
-                    prev_status = prev_data.get("status", "ACCEPTED")
-                    return PurchaseResult(
-                        status=PurchaseStatus(prev_status),
-                        request_id=request_id,
-                        client_id=client_id,
-                        reason="duplicate_request",
-                        ticket_type=TicketType.UNNUMBERED,
-                        duplicate=True,
-                    )
+                    # idempotencia
+                    existing = pipe.get(idemp_key)
+                    if existing is not None:
+                        stored = json.loads(existing)
+                        return PurchaseResult(
+                            status=PurchaseStatus(stored["status"]),
+                            request_id=request_id,
+                            client_id=stored.get("client_id", client_id),
+                            reason=stored.get("reason", "ok"),
+                            ticket_type=stored.get("ticket_type"),
+                            remaining=stored.get("remaining"),
+                            duplicate=True,
+                        )
 
-                # Verificar disponibilidad
-                available = int(pipe.get(avail_key) or 0)
+                    available = int(pipe.get(counter_key) or 0)
+                    if available <= 0:
+                        return PurchaseResult.rejected(
+                            request_id=request_id,
+                            client_id=client_id,
+                            reason=RejectionReason.SOLD_OUT,
+                            ticket_type=TicketType.UNNUMBERED,
+                        )
 
-                if available <= 0:
-                    # Registrar rechazo para idempotencia
                     pipe.multi()
-                    pipe.hset(request_key, mapping={
-                        "status": "REJECTED",
-                        "reason": "sold_out",
-                        "client_id": client_id,
-                        "request_id": request_id,
-                        "timestamp": now,
-                    })
-                    pipe.execute()
-                    return PurchaseResult(
-                        status=PurchaseStatus.REJECTED,
+                    pipe.decr(counter_key)
+                    new_remaining = available - 1
+
+                    result = PurchaseResult.accepted(
                         request_id=request_id,
                         client_id=client_id,
-                        reason="sold_out",
                         ticket_type=TicketType.UNNUMBERED,
-                        remaining=0,
-                        duplicate=False,
+                        remaining=new_remaining,
                     )
-
-                # Compra exitosa: decrementar y registrar
-                pipe.multi()
-                pipe.decr(avail_key)
-                pipe.hset(request_key, mapping={
-                    "status": "ACCEPTED",
-                    "reason": "ok",
-                    "client_id": client_id,
-                    "request_id": request_id,
-                    "ticket_type": "unnumbered",
-                    "timestamp": now,
-                })
-                pipe.rpush(purchases_key, json.dumps({
-                    "request_id": request_id,
-                    "ticket_type": "unnumbered",
-                    "timestamp": now,
-                }))
-                results = pipe.execute()
-                new_count = results[0]  # resultado del DECR
-
-                return PurchaseResult(
-                    status=PurchaseStatus.ACCEPTED,
-                    request_id=request_id,
-                    client_id=client_id,
-                    reason="ok",
-                    ticket_type=TicketType.UNNUMBERED,
-                    remaining=new_count,
-                    duplicate=False,
-                )
+                    result_dict = purchase_result_to_dict(result)
+                    pipe.set(idemp_key, json.dumps(result_dict))
+                    pipe.rpush(
+                        KeySchema.client_purchases(client_id),
+                        json.dumps(result_dict),
+                    )
+                    pipe.execute()
+                    return result
 
             except WatchError:
                 logger.debug(
-                    "WatchError en buy_unnumbered (intento %d), reintentando...",
-                    attempt + 1,
+                    "WatchError en buy_unnumbered intento %d/%d",
+                    attempt + 1, _MAX_RETRIES,
                 )
                 continue
 
-        raise RuntimeError(
-            f"buy_unnumbered: máximo de reintentos ({MAX_RETRIES}) alcanzado"
+        return PurchaseResult.rejected(
+            request_id=request_id,
+            client_id=client_id,
+            reason=RejectionReason.SOLD_OUT,
+            ticket_type=TicketType.UNNUMBERED,
         )
 
-    def buy_numbered(
-        self, client_id: str, seat_id: int, request_id: str
-    ) -> PurchaseResult:
-        """Compra atómica de ticket numerado via WATCH/MULTI/EXEC.
+    # ---- compra numerada (WATCH/MULTI/EXEC) ----
 
-        1. WATCH sobre clave del asiento, idempotencia y contador.
-        2. Si ya existe el request_id, devuelve resultado previo (duplicado).
-        3. Si el asiento existe y está disponible, lo marca como vendido.
-        4. Registra compra en hash de idempotencia e historial del cliente.
-        """
-        now = datetime.now(timezone.utc).isoformat()
-        seat_key = KeySchema.seat_status(seat_id)
-        request_key = KeySchema.request(request_id)
-        purchases_key = KeySchema.client_purchases(client_id)
-        avail_key = KeySchema.NUMBERED_AVAILABLE
+    def buy_numbered(self, client_id: str, seat_id: int, request_id: str) -> PurchaseResult:
+        seat_key = KeySchema.numbered_seat(seat_id)
+        idemp_key = KeySchema.idempotency(request_id)
+        available_set_key = KeySchema.numbered_available_set()
 
-        for attempt in range(MAX_RETRIES):
+        for attempt in range(_MAX_RETRIES):
             try:
-                pipe = self._client.pipeline()
-                pipe.watch(request_key, seat_key, avail_key)
+                with self._client.pipeline() as pipe:
+                    pipe.watch(seat_key, idemp_key)
 
-                # Verificar idempotencia
-                existing = pipe.exists(request_key)
-                if existing:
-                    prev_data = pipe.hgetall(request_key)
-                    pipe.unwatch()
-                    prev_status = prev_data.get("status", "ACCEPTED")
-                    return PurchaseResult(
-                        status=PurchaseStatus(prev_status),
-                        request_id=request_id,
-                        client_id=client_id,
-                        reason="duplicate_request",
-                        ticket_type=TicketType.NUMBERED,
-                        seat_id=seat_id,
-                        duplicate=True,
-                    )
+                    # idempotencia
+                    existing = pipe.get(idemp_key)
+                    if existing is not None:
+                        stored = json.loads(existing)
+                        return PurchaseResult(
+                            status=PurchaseStatus(stored["status"]),
+                            request_id=request_id,
+                            client_id=stored.get("client_id", client_id),
+                            reason=stored.get("reason", "ok"),
+                            ticket_type=stored.get("ticket_type"),
+                            seat_id=stored.get("seat_id"),
+                            duplicate=True,
+                        )
 
-                # Verificar que el asiento existe
-                status = pipe.get(seat_key)
-                if status is None:
+                    seat_data = pipe.get(seat_key)
+                    if seat_data is None:
+                        return PurchaseResult.rejected(
+                            request_id=request_id,
+                            client_id=client_id,
+                            reason=RejectionReason.INVALID_SEAT,
+                            ticket_type=TicketType.NUMBERED,
+                            seat_id=seat_id,
+                        )
+
+                    seat_info = json.loads(seat_data)
+                    if seat_info.get("status") == SeatStatus.SOLD.value:
+                        return PurchaseResult.rejected(
+                            request_id=request_id,
+                            client_id=client_id,
+                            reason=RejectionReason.SEAT_ALREADY_SOLD,
+                            ticket_type=TicketType.NUMBERED,
+                            seat_id=seat_id,
+                        )
+
                     pipe.multi()
-                    pipe.hset(request_key, mapping={
-                        "status": "REJECTED",
-                        "reason": "invalid_seat",
-                        "client_id": client_id,
-                        "seat_id": str(seat_id),
-                        "request_id": request_id,
-                        "timestamp": now,
-                    })
-                    pipe.execute()
-                    return PurchaseResult(
-                        status=PurchaseStatus.REJECTED,
+                    seat_info_new = {
+                        "seat_id": seat_id,
+                        "status": SeatStatus.SOLD.value,
+                        "owner": client_id,
+                    }
+                    pipe.set(seat_key, json.dumps(seat_info_new))
+                    pipe.srem(available_set_key, str(seat_id))
+
+                    result = PurchaseResult.accepted(
                         request_id=request_id,
                         client_id=client_id,
-                        reason="invalid_seat",
                         ticket_type=TicketType.NUMBERED,
                         seat_id=seat_id,
-                        duplicate=False,
                     )
-
-                # Verificar que el asiento está disponible
-                if status != "available":
-                    pipe.multi()
-                    pipe.hset(request_key, mapping={
-                        "status": "REJECTED",
-                        "reason": "seat_already_sold",
-                        "client_id": client_id,
-                        "seat_id": str(seat_id),
-                        "request_id": request_id,
-                        "timestamp": now,
-                    })
+                    result_dict = purchase_result_to_dict(result)
+                    pipe.set(idemp_key, json.dumps(result_dict))
+                    pipe.rpush(
+                        KeySchema.client_purchases(client_id),
+                        json.dumps(result_dict),
+                    )
                     pipe.execute()
-                    return PurchaseResult(
-                        status=PurchaseStatus.REJECTED,
-                        request_id=request_id,
-                        client_id=client_id,
-                        reason="seat_already_sold",
-                        ticket_type=TicketType.NUMBERED,
-                        seat_id=seat_id,
-                        duplicate=False,
-                    )
-
-                # Compra exitosa: marcar asiento como vendido
-                pipe.multi()
-                pipe.set(seat_key, f"sold:{client_id}")
-                pipe.decr(avail_key)
-                pipe.hset(request_key, mapping={
-                    "status": "ACCEPTED",
-                    "reason": "ok",
-                    "client_id": client_id,
-                    "seat_id": str(seat_id),
-                    "request_id": request_id,
-                    "ticket_type": "numbered",
-                    "timestamp": now,
-                })
-                pipe.rpush(purchases_key, json.dumps({
-                    "request_id": request_id,
-                    "ticket_type": "numbered",
-                    "seat_id": seat_id,
-                    "timestamp": now,
-                }))
-                pipe.execute()
-
-                return PurchaseResult(
-                    status=PurchaseStatus.ACCEPTED,
-                    request_id=request_id,
-                    client_id=client_id,
-                    reason="ok",
-                    ticket_type=TicketType.NUMBERED,
-                    seat_id=seat_id,
-                    duplicate=False,
-                )
+                    return result
 
             except WatchError:
                 logger.debug(
-                    "WatchError en buy_numbered seat=%d (intento %d), reintentando...",
-                    seat_id, attempt + 1,
+                    "WatchError en buy_numbered intento %d/%d",
+                    attempt + 1, _MAX_RETRIES,
                 )
                 continue
 
-        raise RuntimeError(
-            f"buy_numbered: máximo de reintentos ({MAX_RETRIES}) alcanzado"
+        return PurchaseResult.rejected(
+            request_id=request_id,
+            client_id=client_id,
+            reason=RejectionReason.SEAT_ALREADY_SOLD,
+            ticket_type=TicketType.NUMBERED,
+            seat_id=seat_id,
         )
 
-    # ---- Consultas ----
+    # ---- consultas ----
 
     def get_available_count(self, ticket_type: str) -> int:
-        """Tickets disponibles leyendo el contador atómico."""
-        if ticket_type == "unnumbered":
-            key = KeySchema.UNNUMBERED_AVAILABLE
-        else:
-            key = KeySchema.NUMBERED_AVAILABLE
-
-        val = self._client.get(key)
-        return int(val) if val is not None else 0
+        if ticket_type == TicketType.UNNUMBERED.value:
+            val = self._client.get(KeySchema.unnumbered_counter())
+            return int(val) if val is not None else 0
+        elif ticket_type == TicketType.NUMBERED.value:
+            return self._client.scard(KeySchema.numbered_available_set())
+        return 0
 
     def get_seat_status(self, seat_id: int) -> SeatInfo:
-        """Estado de un asiento numerado."""
-        key = KeySchema.seat_status(seat_id)
-        raw = self._client.get(key)
-        if raw is None:
-            return SeatInfo(seat_id=seat_id, status="unknown")
-        if raw == "available":
-            return SeatInfo(seat_id=seat_id, status="available")
-        # Formato: "sold:<client_id>"
-        owner = raw.split(":", 1)[1] if ":" in raw else None
-        return SeatInfo(seat_id=seat_id, status="sold", owner=owner)
-
-    # ---- Gestión del sistema ----
-
-    def initialize(self, ticket_type: str, total_tickets: int) -> None:
-        """Inicializa el inventario usando pipelines de Redis (sin Lua).
-
-        Para unnumbered: establece el contador de tickets disponibles.
-        Para numbered: crea cada asiento como 'available' y el contador total.
-        """
-        pipe = self._client.pipeline()
-        if ticket_type == "unnumbered":
-            pipe.set(KeySchema.UNNUMBERED_AVAILABLE, total_tickets)
-        elif ticket_type == "numbered":
-            for seat_id in range(1, total_tickets + 1):
-                pipe.set(KeySchema.seat_status(seat_id), "available")
-            pipe.set(KeySchema.NUMBERED_AVAILABLE, total_tickets)
-        else:
-            raise ValueError(f"Tipo de ticket inválido: {ticket_type}")
-        pipe.execute()
-        logger.info(
-            "Sistema inicializado: type=%s total=%d", ticket_type, total_tickets
+        data = self._client.get(KeySchema.numbered_seat(seat_id))
+        if data is None:
+            return SeatInfo(seat_id=seat_id, status=SeatStatus.AVAILABLE.value)
+        info = json.loads(data)
+        return SeatInfo(
+            seat_id=seat_id,
+            status=info.get("status", SeatStatus.AVAILABLE.value),
+            owner=info.get("owner"),
         )
 
-    def reset(self, ticket_type: str, total_tickets: int) -> None:
-        """Resetea todo el estado del sistema usando SCAN + pipelines.
+    # ---- inicializacion / reset ----
 
-        Borra claves de idempotencia (requests:*), historial (purchases:*)
-        y claves de inventario según el tipo de ticket.
-        """
-        # Borrar claves de idempotencia y compras con SCAN
-        for pattern in ("requests:*", "purchases:*"):
+    def initialize(self, ticket_type: str, total_tickets: int) -> None:
+        if ticket_type in ("unnumbered", "all"):
+            self._client.set(KeySchema.unnumbered_counter(), total_tickets)
+            logger.info("Inventario unnumbered inicializado: %d", total_tickets)
+
+        if ticket_type in ("numbered", "all"):
+            pipe = self._client.pipeline()
+            for seat_id in range(1, total_tickets + 1):
+                seat_data = json.dumps({
+                    "seat_id": seat_id,
+                    "status": SeatStatus.AVAILABLE.value,
+                    "owner": None,
+                })
+                pipe.set(KeySchema.numbered_seat(seat_id), seat_data)
+                pipe.sadd(KeySchema.numbered_available_set(), str(seat_id))
+                if seat_id % 5000 == 0:
+                    pipe.execute()
+                    pipe = self._client.pipeline()
+            pipe.execute()
+            logger.info("Inventario numbered inicializado: %d asientos", total_tickets)
+
+    def reset(self, ticket_type: str, total_tickets: int) -> None:
+        if ticket_type == "all":
+            # Borra todas las claves del sistema
             cursor = 0
             while True:
-                cursor, keys = self._client.scan(cursor, match=pattern, count=1000)
+                cursor, keys = self._client.scan(
+                    cursor=cursor, match=KeySchema.all_keys_pattern(), count=1000,
+                )
+                if keys:
+                    self._client.delete(*keys)
+                if cursor == 0:
+                    break
+            logger.info("Estado Redis reseteado completamente.")
+        elif ticket_type == "unnumbered":
+            self._client.delete(KeySchema.unnumbered_counter())
+        elif ticket_type == "numbered":
+            self._client.delete(KeySchema.numbered_available_set())
+            cursor = 0
+            while True:
+                cursor, keys = self._client.scan(
+                    cursor=cursor, match=f"{KeySchema.PREFIX}:numbered:seat:*", count=1000,
+                )
                 if keys:
                     self._client.delete(*keys)
                 if cursor == 0:
                     break
 
-        # Borrar claves de inventario
-        pipe = self._client.pipeline()
-        if ticket_type in ("unnumbered", "all"):
-            pipe.delete(KeySchema.UNNUMBERED_AVAILABLE)
-        if ticket_type in ("numbered", "all"):
-            for seat_id in range(1, total_tickets + 1):
-                pipe.delete(KeySchema.seat_status(seat_id))
-            pipe.delete(KeySchema.NUMBERED_AVAILABLE)
-        pipe.execute()
-        logger.info("Sistema reseteado: type=%s", ticket_type)
-
 
 class RedisIdempotencyRepository(IdempotencyRepository):
-    """Consulta de idempotencia sobre las claves requests:{id} de Redis."""
+    """Repositorio de idempotencia respaldado por Redis."""
 
-    def __init__(self, client: redis_lib.Redis) -> None:
+    def __init__(self, client: redis.Redis) -> None:
         self._client = client
 
-    def get_request_result(self, request_id: str) -> Optional[dict[str, Any]]:
-        """Retorna todos los campos del hash de idempotencia."""
-        key = KeySchema.request(request_id)
-        data = self._client.hgetall(key)
-        return data if data else None
-
     def request_exists(self, request_id: str) -> bool:
-        """Comprueba si un request_id ya fue registrado."""
-        return bool(self._client.exists(KeySchema.request(request_id)))
+        return self._client.exists(KeySchema.idempotency(request_id)) > 0
+
+    def get_request_result(self, request_id: str) -> Optional[dict[str, Any]]:
+        raw = self._client.get(KeySchema.idempotency(request_id))
+        if raw is None:
+            return None
+        return json.loads(raw)
+
+    def store_result(self, request_id: str, result: dict[str, Any]) -> None:
+        self._client.set(KeySchema.idempotency(request_id), json.dumps(result))
 
 
 class RedisResultRepository(ResultRepository):
-    """Consulta del historial de compras de un cliente."""
+    """Repositorio de historial de compras respaldado por Redis."""
 
-    def __init__(self, client: redis_lib.Redis) -> None:
+    def __init__(self, client: redis.Redis) -> None:
         self._client = client
 
+    def store_purchase(self, client_id: str, result: dict[str, Any]) -> None:
+        self._client.rpush(
+            KeySchema.client_purchases(client_id), json.dumps(result),
+        )
+
     def get_client_purchases(self, client_id: str) -> list[dict[str, Any]]:
-        """Lista JSON-deserializada de compras del cliente."""
-        key = KeySchema.client_purchases(client_id)
-        raw_list = self._client.lrange(key, 0, -1)
-        return [json.loads(item) for item in raw_list] if raw_list else []
+        raw_list = self._client.lrange(KeySchema.client_purchases(client_id), 0, -1)
+        return [json.loads(item) for item in raw_list]

@@ -1,0 +1,36 @@
+types {
+    text/html                                        html htm shtml;
+    text/css                                         css;
+    text/xml                                         xml;
+    text/plain                                       txt;
+    text/x-component                                 htc;
+
+    application/json                                 json;
+    application/javascript                           js;
+    application/xml                                  rss atom xsl;
+    application/xhtml+xml                            xhtml;
+
+    application/pdf                                  pdf;
+    application/zip                                  zip;
+    application/gzip                                 gz;
+    application/x-tar                                tar;
+    application/octet-stream                         bin exe dll deb dmg iso;
+
+    image/gif                                        gif;
+    image/jpeg                                       jpeg jpg;
+    image/png                                        png;
+    image/svg+xml                                    svg svgz;
+    image/webp                                       webp;
+    image/x-icon                                     ico;
+
+    audio/mpeg                                       mp3;
+    audio/ogg                                        ogg;
+
+    video/mp4                                        mp4;
+    video/webm                                       webm;
+
+    font/woff                                        woff;
+    font/woff2                                       woff2;
+    application/vnd.ms-fontobject                    eot;
+    font/ttf                                         ttf;
+}
