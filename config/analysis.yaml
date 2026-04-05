@@ -1,0 +1,67 @@
+# Configuracion del modulo de analisis y generacion de reportes
+# ================================================================
+
+# Configuracion de graficos
+plots:
+  dpi: 150
+  figsize_standard: [10, 6]
+  figsize_wide: [12, 6]
+  figsize_tall: [10, 8]
+  style: "seaborn-v0_8-whitegrid"
+  colors:
+    direct: "#2196F3"       # Azul
+    indirect: "#FF9800"     # Naranja
+    unnumbered: "#4CAF50"   # Verde
+    numbered: "#E91E63"     # Rosa
+    normal: "#00BCD4"       # Cyan
+    hotspot: "#F44336"      # Rojo
+    ideal: "#9E9E9E"        # Gris
+  output_dir: benchmarks/outputs/plots
+  format: png
+
+# Configuracion de metricas
+metrics:
+  percentiles: [50, 95, 99]
+  latency_unit: ms
+  throughput_unit: ops/s
+
+# Thresholds de rendimiento (para alertas/marcas)
+thresholds:
+  throughput:
+    excellent: 5000    # ops/s
+    good: 2000
+    acceptable: 500
+    poor: 100
+  latency_p99:
+    excellent: 50      # ms
+    good: 100
+    acceptable: 500
+    poor: 1000
+  error_rate:
+    excellent: 0.0     # %
+    acceptable: 1.0
+    poor: 5.0
+
+# Formato de reportes
+reports:
+  output_dir: benchmarks/outputs/reports
+  formats:
+    - markdown
+    - html
+  include_plots: true
+  include_raw_data: false
+
+# Directorios de entrada
+input:
+  direct_outputs: benchmarks/outputs/direct
+  indirect_outputs: benchmarks/outputs/indirect
+  comparative_outputs: benchmarks/outputs/comparative
+
+# Configuracion de benchmarks comparativos
+comparative:
+  workers: [1, 2, 4, 8]
+  concurrency: 50
+  timeout_seconds: 60
+  benchmark_files:
+    unnumbered: benchmarks/input/benchmark_unnumbered_20000.txt
+    numbered: benchmarks/input/benchmark_numbered_60000.txt
