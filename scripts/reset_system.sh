@@ -5,7 +5,7 @@
 # Acciones:
 #   1. Para todos los servicios
 #   2. Limpia datos de Redis
-#   3. Limpia colas de RabbitMQ
+#   3. Reinicia el estado de RabbitMQ de forma segura
 #   4. Re-inicializa Redis con seed_state.py
 #   5. Limpia logs
 # =================================================================
@@ -31,11 +31,10 @@ docker exec concert-ticketing-redis redis-cli FLUSHALL 2>/dev/null \
     || log_warn "No se pudo limpiar Redis"
 
 # ── 4. Limpiar RabbitMQ ─────────────────────────────────────────
-log_step "Reseteando colas de RabbitMQ..."
-docker exec concert-ticketing-rabbitmq rabbitmqctl stop_app 2>/dev/null || true
-docker exec concert-ticketing-rabbitmq rabbitmqctl reset 2>/dev/null || true
-docker exec concert-ticketing-rabbitmq rabbitmqctl start_app 2>/dev/null || true
-log_ok "RabbitMQ reseteado"
+log_step "Preparando RabbitMQ para reinicio limpio..."
+log_info "Se omite rabbitmqctl reset dentro del contenedor para evitar fallos en Docker Desktop."
+log_info "Las colas se recrearan al volver a levantar la infraestructura."
+log_ok "RabbitMQ preparado para reinicio limpio"
 
 # ── 5. Re-inicializar estado de Redis ────────────────────────────
 init_redis_state

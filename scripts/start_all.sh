@@ -17,6 +17,11 @@ log_header "LEVANTANDO SISTEMA COMPLETO"
 check_requirements
 
 ERRORS=0
+WORKER_COUNT="${WORKER_COUNT:-3}"
+log_step "Limpiando puertos residuales antes del arranque..."
+kill_port_listener 8000
+kill_port_listener 8001
+kill_port_listener 8080
 
 # ── 1. Docker (Redis + RabbitMQ) ──────────────────────────────────
 log_step "Paso 1/6: Levantando infraestructura Docker..."
@@ -34,20 +39,10 @@ if ! wait_for_port 5672 "RabbitMQ" 60; then
     exit 1
 fi
 
-# Verificar que RabbitMQ realmente acepta conexiones (a veces el puerto abre antes de estar listo)
-log_info "Verificando que RabbitMQ acepte conexiones..."
-RMQ_READY=false
-for i in $(seq 1 15); do
-    if wait_for_port 15672 "RabbitMQ Management" 2 2>/dev/null; then
-        RMQ_READY=true
-        break
-    fi
-    sleep 1
-done
-if $RMQ_READY; then
-    log_ok "RabbitMQ completamente listo"
-else
-    log_warn "RabbitMQ Management no responde (puede tardar más). Continuando..."
+log_info "Esperando a que RabbitMQ acepte AMQP..."
+if ! wait_for_rabbitmq_ready 60; then
+    log_error "RabbitMQ no quedó listo para conexiones AMQP."
+    exit 1
 fi
 
 # ── 2. Inicializar Redis ──────────────────────────────────────────
@@ -125,11 +120,11 @@ fi
 
 # ── 6. Workers (3 instancias) ────────────────────────────────────
 log_step "Paso 6/6: Arrancando Workers..."
-for i in 0 1 2; do
+for (( i=0; i<WORKER_COUNT; i++ )); do
     run_python_bg "worker_${i}" "concert_ticketing.apps.worker.main"
     sleep 1
 done
-log_ok "3 Workers arrancados"
+log_ok "${WORKER_COUNT} Workers arrancados"
 
 # ── Resumen ──────────────────────────────────────────────────────
 echo ""

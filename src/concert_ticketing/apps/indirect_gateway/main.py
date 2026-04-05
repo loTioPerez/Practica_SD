@@ -51,12 +51,15 @@ _config: AppConfig | None = None
 _pending_responses: dict[str, dict[str, Any]] = {}
 _response_events: dict[str, threading.Event] = {}
 _lock = threading.Lock()
+_publish_lock = threading.Lock()
 
 REPLY_QUEUE = f"reply_{uuid.uuid4().hex[:12]}"
 RESPONSE_TIMEOUT = 30  # segundos
 
 # Conexiones (se inicializan con retry en _init_connections)
 _publisher: RabbitMQPublisher | None = None
+_publisher_connection = None
+_publisher_channel = None
 _idempotency_repo: RedisIdempotencyRepository | None = None
 _result_repo: RedisResultRepository | None = None
 _ready = False
@@ -127,18 +130,35 @@ def _reply_consumer_thread(rmq_config) -> None:
 # ---- Inicializacion con retry ----
 
 
+def _rebuild_publisher() -> None:
+    """Reconstruye el canal de publicacion a RabbitMQ."""
+    global _publisher, _publisher_connection, _publisher_channel, _ready
+
+    if _config is None:
+        raise RuntimeError("Configuracion del gateway no disponible")
+
+    if _publisher_connection is not None:
+        try:
+            _publisher_connection.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+    _publisher_connection = _wait_and_connect_rabbitmq(_config.rabbitmq)
+    _publisher_channel = create_channel(_publisher_connection)
+    setup_queues(_publisher_channel)
+    _publisher = RabbitMQPublisher(_publisher_channel)
+    _ready = True
+
+
 def _init_connections() -> None:
     """Inicializa conexiones a RabbitMQ y Redis con retry logic."""
-    global _config, _publisher, _idempotency_repo, _result_repo, _ready
+    global _config, _idempotency_repo, _result_repo, _ready
 
     _config = AppConfig.from_env()
 
     # RabbitMQ con retry
     logger.info("Conectando a RabbitMQ...")
-    rmq_conn = _wait_and_connect_rabbitmq(_config.rabbitmq)
-    rmq_channel = create_channel(rmq_conn)
-    setup_queues(rmq_channel)
-    _publisher = RabbitMQPublisher(rmq_channel)
+    _rebuild_publisher()
 
     # Redis
     logger.info("Conectando a Redis...")
@@ -175,12 +195,21 @@ app = FastAPI(
 )
 
 
-def _wait_for_result(correlation_id: str) -> Optional[dict[str, Any]]:
-    """Espera la respuesta del worker con timeout."""
+def _register_waiter(correlation_id: str) -> threading.Event:
+    """Registra un Event antes de publicar para evitar carreras con la respuesta."""
     event = threading.Event()
     with _lock:
+        if correlation_id in _pending_responses:
+            event.set()
         _response_events[correlation_id] = event
+    return event
 
+
+def _wait_for_result(
+    correlation_id: str,
+    event: threading.Event,
+) -> Optional[dict[str, Any]]:
+    """Espera la respuesta del worker con timeout."""
     event.wait(timeout=RESPONSE_TIMEOUT)
 
     with _lock:
@@ -188,8 +217,38 @@ def _wait_for_result(correlation_id: str) -> Optional[dict[str, Any]]:
         return _pending_responses.pop(correlation_id, None)
 
 
+def _safe_publish_request(
+    request_data: dict[str, Any],
+    correlation_id: str,
+) -> None:
+    """Publica de forma serializada y reintenta una vez tras reconectar."""
+    global _ready
+
+    with _publish_lock:
+        try:
+            _publisher.publish_purchase_request(
+                request_data=request_data,
+                reply_queue=REPLY_QUEUE,
+                correlation_id=correlation_id,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Fallo publicando request_id=%s. Reintentando tras reconectar RabbitMQ: %s",
+                correlation_id, exc,
+            )
+            _rebuild_publisher()
+            _publisher.publish_purchase_request(
+                request_data=request_data,
+                reply_queue=REPLY_QUEUE,
+                correlation_id=correlation_id,
+            )
+        _ready = True
+
+
 def _publish_and_wait(request_data: dict[str, Any]) -> JSONResponse:
     """Publica en RabbitMQ y espera la respuesta del worker."""
+    global _ready
+
     if not _ready or _publisher is None:
         return JSONResponse(
             status_code=503,
@@ -198,20 +257,21 @@ def _publish_and_wait(request_data: dict[str, Any]) -> JSONResponse:
 
     correlation_id = request_data.get("request_id", uuid.uuid4().hex)
 
+    event = _register_waiter(correlation_id)
+
     try:
-        _publisher.publish_purchase_request(
-            request_data=request_data,
-            reply_queue=REPLY_QUEUE,
-            correlation_id=correlation_id,
-        )
+        _safe_publish_request(request_data, correlation_id)
     except Exception as exc:
+        _ready = False
+        with _lock:
+            _response_events.pop(correlation_id, None)
         logger.exception("Error publicando en RabbitMQ: %s", exc)
         return JSONResponse(
             status_code=503,
             content={"detail": "Error de conexión con RabbitMQ"},
         )
 
-    result = _wait_for_result(correlation_id)
+    result = _wait_for_result(correlation_id, event)
     if result is None:
         return JSONResponse(
             status_code=504,
@@ -307,7 +367,7 @@ def get_client_purchases(client_id: str) -> dict:
 def main() -> None:
     cfg = _config or AppConfig.from_env()
     uvicorn.run(
-        "concert_ticketing.apps.indirect_gateway.main:app",
+        app,
         host=cfg.host,
         port=8080,
         reload=False,

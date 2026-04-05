@@ -5,13 +5,19 @@
 # uniforme vs alta contencion (hotspot).
 # =================================================================
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
 # Configuracion
-DIRECT_BASE_URL="${DIRECT_BASE_URL:-http://localhost}"
+if [[ -n "${DIRECT_BASE_URL:-}" ]]; then
+    DIRECT_BASE_URL="$DIRECT_BASE_URL"
+elif curl -sf "http://localhost/health" >/dev/null 2>&1; then
+    DIRECT_BASE_URL="http://localhost"
+else
+    DIRECT_BASE_URL="http://localhost:8000"
+fi
 INDIRECT_BASE_URL="${INDIRECT_BASE_URL:-http://localhost:8080}"
 
 # Benchmarks
@@ -20,7 +26,7 @@ HOTSPOT_BENCHMARK="${HOTSPOT_BENCHMARK:-${PROJECT_ROOT}/benchmarks/generated/hot
 
 CONCURRENCY="${BENCHMARK_CONCURRENCY:-50}"
 TIMEOUT="${BENCHMARK_TIMEOUT:-60}"
-OUTPUT_BASE="${PROJECT_ROOT}/benchmarks/outputs/contention/${TIMESTAMP}"
+OUTPUT_BASE="${PROJECT_ROOT}/benchmarks/outputs/contention/latest"
 
 # Colores
 GREEN='\033[0;32m'
@@ -55,8 +61,13 @@ run_benchmark() {
         2>&1 | tee "${output_dir}/contention_${arch}_${scenario}.log"
 }
 
+restart_stack() {
+    bash "${SCRIPT_DIR}/stop_all.sh"
+    WORKER_COUNT="${WORKER_COUNT:-3}" bash "${SCRIPT_DIR}/start_all.sh"
+}
+
 echo "============================================================"
-echo "  TEST DE CONTENCION - ${TIMESTAMP}"
+echo "  TEST DE CONTENCION"
 echo "============================================================"
 log_info "Benchmark normal: $(basename "$NORMAL_BENCHMARK")"
 log_info "Benchmark hotspot: $(basename "$HOTSPOT_BENCHMARK")"
@@ -86,12 +97,14 @@ if [ ! -f "$HOTSPOT_BENCHMARK" ]; then
     fi
 fi
 
+rm -rf "$OUTPUT_BASE"
 mkdir -p "$OUTPUT_BASE"
 
 # Escenario Normal
 echo ""
 log_info "=== ESCENARIO: DISTRIBUCION NORMAL ==="
 for arch in direct indirect; do
+    restart_stack
     OUTPUT_DIR="${OUTPUT_BASE}/normal/${arch}"
     log_info "Ejecutando ${arch} con distribucion normal..."
     run_benchmark "$arch" "$NORMAL_BENCHMARK" "normal" "$OUTPUT_DIR" || \
@@ -102,6 +115,7 @@ done
 echo ""
 log_info "=== ESCENARIO: ALTA CONTENCION (HOTSPOT) ==="
 for arch in direct indirect; do
+    restart_stack
     OUTPUT_DIR="${OUTPUT_BASE}/hotspot/${arch}"
     log_info "Ejecutando ${arch} con alta contencion..."
     run_benchmark "$arch" "$HOTSPOT_BENCHMARK" "hotspot" "$OUTPUT_DIR" || \
@@ -121,8 +135,9 @@ for arch in direct indirect; do
     for scenario in normal hotspot; do
         SUMMARY=$(find "${OUTPUT_BASE}/${scenario}/${arch}" -name "*_summary.json" 2>/dev/null | head -1)
         if [ -n "$SUMMARY" ] && [ -f "$SUMMARY" ]; then
-            TP=$(python3 -c "import json; d=json.load(open('$SUMMARY')); print(f\"{d.get('throughput_ops_per_second', 0):.1f}\")")
-            LAT=$(python3 -c "import json; d=json.load(open('$SUMMARY')); print(f\"{d.get('average_latency_ms', 0):.1f}\")")
+            SUMMARY_PY=$(to_python_path "$SUMMARY")
+            TP=$(python3 -c "import json; d=json.load(open(r'$SUMMARY_PY', encoding='utf-8')); print(f\"{d.get('throughput_ops_per_second', 0):.1f}\")")
+            LAT=$(python3 -c "import json; d=json.load(open(r'$SUMMARY_PY', encoding='utf-8')); print(f\"{d.get('average_latency_ms', 0):.1f}\")")
             echo -e "  ${arch}/${scenario}: TP=${TP} ops/s | Lat=${LAT}ms"
         else
             echo -e "  ${arch}/${scenario}: No data"

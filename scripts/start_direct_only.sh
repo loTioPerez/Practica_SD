@@ -13,6 +13,9 @@ source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
 
 log_header "LEVANTANDO ARQUITECTURA DIRECTA"
 check_requirements
+log_step "Limpiando puertos residuales antes del arranque..."
+kill_port_listener 8000
+kill_port_listener 8001
 
 # ── 1. Docker (solo Redis) ────────────────────────────────────────
 start_docker_services redis

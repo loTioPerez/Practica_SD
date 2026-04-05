@@ -12,7 +12,13 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
 # URLs base por defecto
-DIRECT_BASE_URL="${DIRECT_BASE_URL:-http://localhost}"
+if [[ -n "${DIRECT_BASE_URL:-}" ]]; then
+    DIRECT_BASE_URL="$DIRECT_BASE_URL"
+elif curl -sf "http://localhost/health" >/dev/null 2>&1; then
+    DIRECT_BASE_URL="http://localhost"
+else
+    DIRECT_BASE_URL="http://localhost:8000"
+fi
 INDIRECT_BASE_URL="${INDIRECT_BASE_URL:-http://localhost:8080}"
 
 # Benchmarks de entrada

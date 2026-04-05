@@ -50,7 +50,7 @@ def main() -> None:
     port = _resolve_port()
     config = AppConfig.from_env()
     uvicorn.run(
-        "concert_ticketing.apps.direct_api.main:app",
+        app,
         host=config.host,
         port=port,
         reload=False,

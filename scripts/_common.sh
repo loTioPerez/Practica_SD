@@ -124,7 +124,7 @@ stop_process() {
             log_warn "Forzado kill de $name (PID $pid)"
         fi
     fi
-    rm -f "$PIDS_DIR/${name}.pid"
+    rm -f "$PIDS_DIR/${name}.pid" 2>/dev/null || true
 }
 
 # ---- Funciones de espera ----
@@ -162,6 +162,26 @@ wait_for_http() {
     log_ok "$name respondiendo en $url (${waited}s)"
 }
 
+wait_for_rabbitmq_ready() {
+    local max_wait="${1:-60}"
+    local waited=0
+
+    while true; do
+        if PYTHONPATH="$ROOT_DIR/src${PYTHONPATH:+:$PYTHONPATH}" \
+            python3 -c "from concert_ticketing.shared.health import check_rabbitmq_health; import sys; result = check_rabbitmq_health(); sys.exit(0 if result.healthy else 1)" \
+            >/dev/null 2>&1; then
+            log_ok "RabbitMQ operativo (${waited}s)"
+            return 0
+        fi
+        if (( waited >= max_wait )); then
+            log_error "RabbitMQ no quedó operativo tras ${max_wait}s"
+            return 1
+        fi
+        sleep 1
+        ((waited++))
+    done
+}
+
 # ---- Funciones de Docker ----
 start_docker_services() {
     local services="$*"
@@ -180,12 +200,25 @@ run_python_bg() {
     local module="$2"
     local logfile="$LOGS_DIR/${name}.log"
     shift 2
-    local extra_env=("$@")
+    local extra_env=()
+    if (( $# > 0 )); then
+        extra_env=("$@")
+    fi
+    local env_cmd=(
+        env
+        "PYTHONPATH=$ROOT_DIR/src${PYTHONPATH:+:$PYTHONPATH}"
+    )
+    if (( ${#extra_env[@]} > 0 )); then
+        env_cmd+=("${extra_env[@]}")
+    fi
+    env_cmd+=(
+        python3
+        -m
+        "$module"
+    )
 
     log_step "Arrancando $name..."
-    env PYTHONPATH="$ROOT_DIR/src${PYTHONPATH:+:$PYTHONPATH}" \
-        "${extra_env[@]}" \
-        python3 -m "$module" > "$logfile" 2>&1 &
+    "${env_cmd[@]}" > "$logfile" 2>&1 &
     local pid=$!
     save_pid "$name" "$pid"
     log_info "$name arrancado (PID $pid) → log: $logfile"
@@ -206,5 +239,30 @@ kill_pattern() {
     if [[ -n "$pids" ]]; then
         echo "$pids" | xargs kill 2>/dev/null || true
         log_ok "Procesos '$pattern' detenidos"
+    fi
+}
+
+kill_port_listener() {
+    local port="$1"
+    local pids
+
+    pids=$(netstat -ano 2>/dev/null | grep LISTENING | grep ":${port}[[:space:]]" | awk '{print $NF}' | sort -u || true)
+    if [[ -z "$pids" ]]; then
+        return 0
+    fi
+
+    for pid in $pids; do
+        [[ -n "$pid" ]] || continue
+        taskkill.exe //F //PID "$pid" >/dev/null 2>&1 || true
+        log_ok "Puerto ${port} liberado (PID ${pid})"
+    done
+}
+
+to_python_path() {
+    local path="$1"
+    if command -v cygpath >/dev/null 2>&1; then
+        cygpath -w "$path"
+    else
+        echo "$path"
     fi
 }

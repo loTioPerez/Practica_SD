@@ -25,7 +25,7 @@ from .key_schema import KeySchema
 
 logger = get_logger(__name__)
 
-_MAX_RETRIES = 5
+_WATCH_RETRY_SLEEP_SECONDS = 0.001
 
 
 class RedisInventoryRepository(InventoryRepository):
@@ -39,8 +39,9 @@ class RedisInventoryRepository(InventoryRepository):
     def buy_unnumbered(self, client_id: str, request_id: str) -> PurchaseResult:
         counter_key = KeySchema.unnumbered_counter()
         idemp_key = KeySchema.idempotency(request_id)
+        attempt = 0
 
-        for attempt in range(_MAX_RETRIES):
+        while True:
             try:
                 with self._client.pipeline() as pipe:
                     pipe.watch(counter_key, idemp_key)
@@ -88,18 +89,13 @@ class RedisInventoryRepository(InventoryRepository):
                     return result
 
             except WatchError:
+                attempt += 1
                 logger.debug(
-                    "WatchError en buy_unnumbered intento %d/%d",
-                    attempt + 1, _MAX_RETRIES,
+                    "WatchError en buy_unnumbered intento %d",
+                    attempt,
                 )
+                time.sleep(_WATCH_RETRY_SLEEP_SECONDS)
                 continue
-
-        return PurchaseResult.rejected(
-            request_id=request_id,
-            client_id=client_id,
-            reason=RejectionReason.SOLD_OUT,
-            ticket_type=TicketType.UNNUMBERED,
-        )
 
     # ---- compra numerada (WATCH/MULTI/EXEC) ----
 
@@ -107,8 +103,9 @@ class RedisInventoryRepository(InventoryRepository):
         seat_key = KeySchema.numbered_seat(seat_id)
         idemp_key = KeySchema.idempotency(request_id)
         available_set_key = KeySchema.numbered_available_set()
+        attempt = 0
 
-        for attempt in range(_MAX_RETRIES):
+        while True:
             try:
                 with self._client.pipeline() as pipe:
                     pipe.watch(seat_key, idemp_key)
@@ -172,19 +169,13 @@ class RedisInventoryRepository(InventoryRepository):
                     return result
 
             except WatchError:
+                attempt += 1
                 logger.debug(
-                    "WatchError en buy_numbered intento %d/%d",
-                    attempt + 1, _MAX_RETRIES,
+                    "WatchError en buy_numbered intento %d",
+                    attempt,
                 )
+                time.sleep(_WATCH_RETRY_SLEEP_SECONDS)
                 continue
-
-        return PurchaseResult.rejected(
-            request_id=request_id,
-            client_id=client_id,
-            reason=RejectionReason.SEAT_ALREADY_SOLD,
-            ticket_type=TicketType.NUMBERED,
-            seat_id=seat_id,
-        )
 
     # ---- consultas ----
 

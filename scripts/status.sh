@@ -66,9 +66,13 @@ echo ""
 # ── Health Checks ────────────────────────────────────────────────
 echo -e "${BOLD}Health Checks:${NC}"
 
-for endpoint in "http://localhost:8000/health:API_Directa_0" "http://localhost:8001/health:API_Directa_1" "http://localhost:80/health:NGINX" "http://localhost:8080/health:Gateway_Indirecto"; do
-    url="${endpoint%%:*}"
-    name="${endpoint##*:}"
+for endpoint in \
+    "http://localhost:8000/health|API_Directa_0" \
+    "http://localhost:8001/health|API_Directa_1" \
+    "http://localhost:80/health|NGINX" \
+    "http://localhost:8080/health|Gateway_Indirecto"; do
+    url="${endpoint%%|*}"
+    name="${endpoint##*|}"
     response=$(curl -sf -w "%{http_code}" -o /dev/null "$url" 2>/dev/null) && \
         echo -e "  ${GREEN}✔${NC}  $name  →  HTTP $response" || \
         echo -e "  ${RED}✘${NC}  $name  →  No responde"

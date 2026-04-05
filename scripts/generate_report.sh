@@ -12,6 +12,21 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 OUTPUT_BASE="${1:-${PROJECT_ROOT}/benchmarks/outputs}"
 PLOTS_DIR="${OUTPUT_BASE}/plots"
 REPORTS_DIR="${OUTPUT_BASE}/reports"
+PY_OUTPUT_BASE="$OUTPUT_BASE"
+PY_PLOTS_DIR="$PLOTS_DIR"
+PY_REPORTS_DIR="$REPORTS_DIR"
+PY_SCALABILITY_DIR="${OUTPUT_BASE}/scalability/latest"
+PY_CONTENTION_NORMAL_DIR="${OUTPUT_BASE}/contention/latest/normal"
+PY_CONTENTION_HOTSPOT_DIR="${OUTPUT_BASE}/contention/latest/hotspot"
+
+if command -v cygpath >/dev/null 2>&1; then
+    PY_OUTPUT_BASE="$(cygpath -w "$OUTPUT_BASE")"
+    PY_PLOTS_DIR="$(cygpath -w "$PLOTS_DIR")"
+    PY_REPORTS_DIR="$(cygpath -w "$REPORTS_DIR")"
+    PY_SCALABILITY_DIR="$(cygpath -w "$PY_SCALABILITY_DIR")"
+    PY_CONTENTION_NORMAL_DIR="$(cygpath -w "$PY_CONTENTION_NORMAL_DIR")"
+    PY_CONTENTION_HOTSPOT_DIR="$(cygpath -w "$PY_CONTENTION_HOTSPOT_DIR")"
+fi
 
 # Colores
 GREEN='\033[0;32m'
@@ -43,10 +58,10 @@ sys.path.insert(0, '${PROJECT_ROOT}/src')
 from concert_ticketing.apps.analysis.analyzer import BenchmarkAnalyzer
 from concert_ticketing.apps.analysis.plotter import BenchmarkPlotter
 from concert_ticketing.apps.analysis.reporter import BenchmarkReporter
-from concert_ticketing.apps.analysis.utils import extract_latencies, load_all_results
+from concert_ticketing.apps.analysis.utils import extract_latencies
 
 print('=== Cargando resultados...')
-analyzer = BenchmarkAnalyzer('${OUTPUT_BASE}')
+analyzer = BenchmarkAnalyzer(r'${PY_OUTPUT_BASE}')
 analyzer.load_results()
 
 print(f'  Direct summaries: {len(analyzer.direct.summaries)}')
@@ -63,12 +78,15 @@ summary_table = analyzer.get_summary_table()
 print(f'  Filas en tabla: {len(summary_table)}')
 
 print('\n=== Analizando escalabilidad...')
-scalability = analyzer.analyze_scalability()
+scalability = analyzer.analyze_scalability(r'${PY_SCALABILITY_DIR}')
 has_scalability = any(bool(v) for v in scalability.values())
 print(f'  Datos de escalabilidad: {\"si\" if has_scalability else \"no\"}')
 
 print('\n=== Analizando contencion...')
-contention = analyzer.analyze_contention()
+contention = analyzer.analyze_contention(
+    r'${PY_CONTENTION_NORMAL_DIR}',
+    r'${PY_CONTENTION_HOTSPOT_DIR}',
+)
 has_contention = any(
     bool(v.get('normal', {}).get('total_operations', 0))
     for v in contention.values()
@@ -76,7 +94,7 @@ has_contention = any(
 print(f'  Datos de contencion: {\"si\" if has_contention else \"no\"}')
 
 print('\n=== Generando graficos...')
-plotter = BenchmarkPlotter('${PLOTS_DIR}')
+plotter = BenchmarkPlotter(r'${PY_PLOTS_DIR}')
 
 # Extraer latencias
 direct_latencies = []
@@ -98,7 +116,7 @@ for p in plots:
     print(f'    - {p}')
 
 print('\n=== Generando reportes...')
-reporter = BenchmarkReporter('${REPORTS_DIR}', '${PLOTS_DIR}')
+reporter = BenchmarkReporter(r'${PY_REPORTS_DIR}', r'${PY_PLOTS_DIR}')
 
 md_path = reporter.generate_markdown_report(
     comparison=comparison,

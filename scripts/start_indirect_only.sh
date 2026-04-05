@@ -15,11 +15,14 @@ NUM_WORKERS="${1:-3}"
 
 log_header "LEVANTANDO ARQUITECTURA INDIRECTA"
 check_requirements
+log_step "Limpiando puertos residuales antes del arranque..."
+kill_port_listener 8080
 
 # ── 1. Docker (Redis + RabbitMQ) ──────────────────────────────────
 start_docker_services redis rabbitmq
 wait_for_port 6379 "Redis" 30
 wait_for_port 5672 "RabbitMQ" 30
+wait_for_rabbitmq_ready 60
 
 # ── 2. Inicializar Redis ──────────────────────────────────────────
 init_redis_state

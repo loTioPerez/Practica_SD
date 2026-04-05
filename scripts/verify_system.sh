@@ -145,12 +145,12 @@ HAS_ERRORS=false
 for logfile in "$LOGS_DIR"/*.log; do
     [[ -f "$logfile" ]] || continue
     name=$(basename "$logfile")
-    error_count=$(grep -ci "error\|exception\|traceback" "$logfile" 2>/dev/null) || error_count=0
+    error_count=$(grep -Eci "^ERROR|Traceback|Exception|\| ERROR \|" "$logfile" 2>/dev/null) || error_count=0
     error_count=$(echo "$error_count" | tr -d '[:space:]')
     if [[ "$error_count" -gt 0 ]]; then
         echo -e "  ${RED}⚠${NC} $name → $error_count errores encontrados"
         # Mostrar última línea de error
-        last_error=$(grep -i "error\|exception" "$logfile" 2>/dev/null | tail -1)
+        last_error=$(grep -Ei "^ERROR|Traceback|Exception|\| ERROR \|" "$logfile" 2>/dev/null | tail -1)
         if [[ -n "$last_error" ]]; then
             echo -e "    ${CYAN}Último: ${last_error:0:100}${NC}"
         fi

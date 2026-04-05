@@ -20,6 +20,9 @@ log_step "Limpiando procesos residuales..."
 kill_pattern "concert_ticketing.apps.direct_api"
 kill_pattern "concert_ticketing.apps.indirect_gateway"
 kill_pattern "concert_ticketing.apps.worker"
+kill_port_listener 8000
+kill_port_listener 8001
+kill_port_listener 8080
 
 # ── 3. Parar NGINX ──────────────────────────────────────────────
 if command -v nginx &>/dev/null; then
