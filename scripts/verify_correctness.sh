@@ -54,7 +54,15 @@ for summary_path in summary_files:
     if transport_errors != 0:
         failures.append(f"{name}: hay errores de transporte ({transport_errors})")
 
-    if "unnumbered" in name:
+    ticket_types = {str(row.get("ticket_type", "")).lower() for row in results}
+    is_unnumbered = "unnumbered" in name or "unnumbered" in ticket_types
+    is_numbered_like = (
+        ("numbered" in name and "unnumbered" not in name)
+        or "hotspot" in name
+        or "numbered" in ticket_types
+    )
+
+    if is_unnumbered:
         accepted = summary.get("accepted", 0)
         total = summary.get("total_operations", 0)
         expected = min(total, 20000)
@@ -62,7 +70,7 @@ for summary_path in summary_files:
         if accepted != expected:
             failures.append(f"{name}: aceptadas={accepted}, esperado={expected}")
 
-    if "numbered" in name and "unnumbered" not in name:
+    if is_numbered_like:
         accepted_seats = []
         for row in results:
             body = row.get("response_body") or {}

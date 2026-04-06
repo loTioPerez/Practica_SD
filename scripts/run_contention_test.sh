@@ -11,13 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # Configuracion
-if [[ -n "${DIRECT_BASE_URL:-}" ]]; then
-    DIRECT_BASE_URL="$DIRECT_BASE_URL"
-elif curl -sf "http://localhost/health" >/dev/null 2>&1; then
-    DIRECT_BASE_URL="http://localhost"
-else
-    DIRECT_BASE_URL="http://localhost:8000"
-fi
+DIRECT_BASE_URL="${DIRECT_BASE_URL:-http://localhost}"
 INDIRECT_BASE_URL="${INDIRECT_BASE_URL:-http://localhost:8080}"
 
 # Benchmarks
@@ -74,6 +68,12 @@ log_info "Benchmark hotspot: $(basename "$HOTSPOT_BENCHMARK")"
 log_info "Concurrencia: ${CONCURRENCY}"
 echo ""
 
+if ! curl -sf "${DIRECT_BASE_URL}/health" >/dev/null 2>&1; then
+    log_error "NGINX o el punto unico de entrada directo no esta disponible en ${DIRECT_BASE_URL}"
+    log_error "Para la fase 5 se exige ejecutar la arquitectura directa a traves del balanceador."
+    exit 1
+fi
+
 # Generar hotspot benchmark si no existe
 if [ ! -f "$HOTSPOT_BENCHMARK" ]; then
     log_info "Generando benchmark hotspot..."
@@ -105,6 +105,10 @@ echo ""
 log_info "=== ESCENARIO: DISTRIBUCION NORMAL ==="
 for arch in direct indirect; do
     restart_stack
+    if [[ "$arch" == "direct" ]] && ! curl -sf "${DIRECT_BASE_URL}/health" >/dev/null 2>&1; then
+        log_error "Tras el rearranque no hay punto unico de entrada disponible en ${DIRECT_BASE_URL}"
+        exit 1
+    fi
     OUTPUT_DIR="${OUTPUT_BASE}/normal/${arch}"
     log_info "Ejecutando ${arch} con distribucion normal..."
     run_benchmark "$arch" "$NORMAL_BENCHMARK" "normal" "$OUTPUT_DIR" || \
@@ -116,6 +120,10 @@ echo ""
 log_info "=== ESCENARIO: ALTA CONTENCION (HOTSPOT) ==="
 for arch in direct indirect; do
     restart_stack
+    if [[ "$arch" == "direct" ]] && ! curl -sf "${DIRECT_BASE_URL}/health" >/dev/null 2>&1; then
+        log_error "Tras el rearranque no hay punto unico de entrada disponible en ${DIRECT_BASE_URL}"
+        exit 1
+    fi
     OUTPUT_DIR="${OUTPUT_BASE}/hotspot/${arch}"
     log_info "Ejecutando ${arch} con alta contencion..."
     run_benchmark "$arch" "$HOTSPOT_BENCHMARK" "hotspot" "$OUTPUT_DIR" || \

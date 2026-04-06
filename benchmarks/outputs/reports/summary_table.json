@@ -1,0 +1,50 @@
+[
+  {
+    "benchmark": "benchmark_unnumbered_20000",
+    "architecture": "direct",
+    "throughput": 3815.5821,
+    "latency_mean": 489.1628,
+    "latency_p95": 1431.767,
+    "latency_p99": 2206.0148,
+    "success_rate": 100.0,
+    "error_rate": 0.0,
+    "accepted": 20000,
+    "rejected": 0
+  },
+  {
+    "benchmark": "benchmark_unnumbered_20000",
+    "architecture": "indirect",
+    "throughput": 14421.8452,
+    "latency_mean": 800.9983,
+    "latency_p95": 820.5684,
+    "latency_p99": 828.7362,
+    "success_rate": 100.0,
+    "error_rate": 0.0,
+    "accepted": 20000,
+    "rejected": 0
+  },
+  {
+    "benchmark": "benchmark_numbered_60000",
+    "architecture": "direct",
+    "throughput": 3201.818,
+    "latency_mean": 476.9784,
+    "latency_p95": 1430.0226,
+    "latency_p99": 2282.8134,
+    "success_rate": 76.93,
+    "error_rate": 0.0,
+    "accepted": 20000,
+    "rejected": 5997
+  },
+  {
+    "benchmark": "benchmark_numbered_60000",
+    "architecture": "indirect",
+    "throughput": 19185.4724,
+    "latency_mean": 800.6829,
+    "latency_p95": 819.9156,
+    "latency_p99": 827.7203,
+    "success_rate": 76.93,
+    "error_rate": 0.0,
+    "accepted": 20000,
+    "rejected": 5997
+  }
+]

@@ -1,9 +1,9 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
-Genera un benchmark de alta contención (hotspot) para asientos numerados.
+Genera un benchmark de alta contenciÃ³n (hotspot) para asientos numerados.
 
 El X% de las peticiones se concentra en el Y% de los asientos,
-simulando un escenario realista donde ciertos asientos son más demandados.
+simulando un escenario realista donde ciertos asientos son mÃ¡s demandados.
 """
 
 import argparse
@@ -20,12 +20,12 @@ def generate_hotspot_benchmark(
     hotspot_seats_pct: int = 5,
     seed: int = 42,
 ) -> None:
-    """Genera archivo de benchmark con distribución hotspot.
+    """Genera archivo de benchmark con distribuciÃ³n hotspot.
 
     Args:
         output: Ruta del archivo de salida.
-        total_ops: Número total de operaciones a generar.
-        total_seats: Número total de asientos disponibles.
+        total_ops: NÃºmero total de operaciones a generar.
+        total_seats: NÃºmero total de asientos disponibles.
         hotspot_pct: Porcentaje de operaciones dirigidas a asientos hotspot.
         hotspot_seats_pct: Porcentaje de asientos que son hotspot.
         seed: Semilla para reproducibilidad.
@@ -45,7 +45,7 @@ def generate_hotspot_benchmark(
     total_clients = max(500, total_ops // 10)
 
     lines = []
-    lines.append("# Concert Ticket Benchmark – Numbered Seats (HOTSPOT)")
+    lines.append("# Concert Ticket Benchmark â€“ Numbered Seats (HOTSPOT)")
     lines.append("# Format: BUY <client_id> <seat_id> <request_id>")
     lines.append(f"# Total operations: {total_ops}")
     lines.append(f"# Hotspot config: {hotspot_pct}% ops -> {hotspot_seats_pct}% seats ({num_hotspot_seats} seats)")
@@ -76,15 +76,15 @@ def generate_hotspot_benchmark(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-    print(f"✅ Hotspot benchmark generado: {output_path}")
-    print(f"   Total operaciones: {total_ops}")
-    print(f"   Asientos hotspot: {num_hotspot_seats} ({hotspot_seats_pct}%)")
-    print(f"   Ops en hotspot: {num_hotspot_ops} ({hotspot_pct}%)")
-    print(f"   Ops en cold: {num_cold_ops} ({100 - hotspot_pct}%)")
+    print(f"Hotspot benchmark generado: {output_path}")
+    print(f"  Total operaciones: {total_ops}")
+    print(f"  Asientos hotspot: {num_hotspot_seats} ({hotspot_seats_pct}%)")
+    print(f"  Ops en hotspot: {num_hotspot_ops} ({hotspot_pct}%)")
+    print(f"  Ops en cold: {num_cold_ops} ({100 - hotspot_pct}%)")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Genera benchmark hotspot de alta contención")
+    parser = argparse.ArgumentParser(description="Genera benchmark hotspot de alta contenciÃ³n")
     parser.add_argument("--output", required=True, help="Archivo de salida")
     parser.add_argument("--total-ops", type=int, default=60000, help="Total de operaciones")
     parser.add_argument("--total-seats", type=int, default=20000, help="Total de asientos")
@@ -105,3 +105,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

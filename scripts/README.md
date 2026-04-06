@@ -41,6 +41,8 @@
 | `run_comparative_benchmarks.sh` | Benchmarks comparativos directa vs indirecta |
 | `run_scalability_test.sh` | Test de escalabilidad (1, 2, 4, 8 workers) |
 | `run_contention_test.sh` | Test de contención (normal vs hotspot) |
+| `run_dynamic_scaling_test.sh` | Benchmark con cambio de workers en caliente |
+| `run_hotspot_benchmark.sh` | Ejecución aislada del escenario hotspot |
 | `run_full_analysis.sh` | Pipeline completo: benchmarks + análisis + report |
 | `generate_report.sh` | Genera informes Markdown/HTML con gráficos |
 
