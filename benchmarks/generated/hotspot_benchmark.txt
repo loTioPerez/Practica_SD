@@ -1,4 +1,4 @@
-# Concert Ticket Benchmark – Numbered Seats (HOTSPOT)
+# Concert Ticket Benchmark â€“ Numbered Seats (HOTSPOT)
 # Format: BUY <client_id> <seat_id> <request_id>
 # Total operations: 60000
 # Hotspot config: 80% ops -> 5% seats (1000 seats)

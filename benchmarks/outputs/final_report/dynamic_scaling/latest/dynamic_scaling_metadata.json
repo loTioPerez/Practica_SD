@@ -1,0 +1,10 @@
+{
+  "benchmark_file": "c:\\Users\\alvar\\OneDrive\\Desktop\\UNI\\3r_Curs\\2n_quatri\\SD\\Practica\\Practica_SD\\benchmarks\\input\\benchmark_unnumbered_20000.txt",
+  "base_url": "http://localhost:8080",
+  "initial_workers": 2,
+  "target_workers": 4,
+  "scale_after_seconds": 20,
+  "started_at": "2026-04-06T19:59:40Z",
+  "scaled_at": "2026-04-06T20:00:00Z",
+  "finished_at": "2026-04-06T20:04:38Z"
+}

@@ -285,9 +285,10 @@ class BenchmarkReporter:
 
 ### Configuration
 
-- **Concurrency**: 50 concurrent requests (configurable)
-- **Timeout**: 60 seconds per request
-- **Workers tested**: 1, 2, 4, 8
+- **Concurrency**: Configurable per benchmark execution
+- **Timeout**: Configurable per benchmark execution
+- **Workers tested**: Configurable; scalability experiments typically vary the number of workers
+- **Note**: Refer to the raw summary files for the exact parameters used in each execution set
 """
 
     def _generate_summary_table_md(self, table: list[dict[str, Any]]) -> str:

@@ -1,0 +1,16 @@
+{
+  "total_operations": 20000,
+  "total_time_seconds": 168.7288,
+  "throughput_ops_per_second": 118.5334,
+  "average_latency_ms": 83.4853,
+  "accepted": 20000,
+  "rejected": 0,
+  "duplicates": 0,
+  "transport_errors": 0,
+  "http_status_counts": {
+    "200": 20000
+  },
+  "reason_counts": {
+    "ok": 20000
+  }
+}

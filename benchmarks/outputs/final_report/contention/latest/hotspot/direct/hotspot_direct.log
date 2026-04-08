@@ -1,0 +1,9 @@
+=== Resumen benchmark directo ===
+Operaciones totales: 60000
+Tiempo total (s): 943.7066
+Throughput (ops/s): 63.5791
+Latencia media (ms): 769.1815
+Aceptadas: 9890
+Rechazadas: 50110
+Duplicadas: 0
+Errores de transporte: 0

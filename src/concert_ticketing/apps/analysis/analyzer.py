@@ -143,14 +143,20 @@ class BenchmarkAnalyzer:
             indirect_results = self.indirect.results.get(bench_name, [])
 
             if direct_results:
-                entry["direct"] = self.calculate_metrics(direct_results)
+                entry["direct"] = self._merge_summary_metrics(
+                    self.calculate_metrics(direct_results),
+                    direct_summary,
+                )
             elif direct_summary:
                 entry["direct"] = direct_summary
             else:
                 entry["direct"] = self._empty_metrics()
 
             if indirect_results:
-                entry["indirect"] = self.calculate_metrics(indirect_results)
+                entry["indirect"] = self._merge_summary_metrics(
+                    self.calculate_metrics(indirect_results),
+                    indirect_summary,
+                )
             elif indirect_summary:
                 entry["indirect"] = indirect_summary
             else:
@@ -168,6 +174,26 @@ class BenchmarkAnalyzer:
             comparison[bench_name] = entry
 
         return comparison
+
+    @staticmethod
+    def _merge_summary_metrics(
+        calculated_metrics: dict[str, Any],
+        summary_metrics: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Combina metricas calculadas con metricas agregadas del summary.
+
+        Los resultados individuales sirven para percentiles y tasas, pero el
+        throughput correcto debe salir del tiempo total real del benchmark
+        almacenado en el summary.
+        """
+        merged = dict(calculated_metrics)
+        if summary_metrics:
+            if "total_time_seconds" in summary_metrics:
+                merged["total_time_seconds"] = summary_metrics["total_time_seconds"]
+            if "throughput_ops_per_second" in summary_metrics:
+                merged["throughput"] = summary_metrics["throughput_ops_per_second"]
+                merged["throughput_ops_per_second"] = summary_metrics["throughput_ops_per_second"]
+        return merged
 
     def analyze_scalability(
         self,
@@ -202,6 +228,24 @@ class BenchmarkAnalyzer:
 
                 metrics = self.calculate_metrics(all_results) if all_results else {}
                 if summaries:
+                    if metrics:
+                        # Ajustar tiempo/throughput al valor agregado real del summary.
+                        summary_time_values = [
+                            s.get("total_time_seconds", 0) for s in summaries.values()
+                            if s.get("total_time_seconds", 0)
+                        ]
+                        summary_tp_values = [
+                            s.get("throughput_ops_per_second", 0) for s in summaries.values()
+                            if s.get("throughput_ops_per_second", 0)
+                        ]
+                        if summary_time_values:
+                            metrics["total_time_seconds"] = round(
+                                statistics.mean(summary_time_values), 4
+                            )
+                        if summary_tp_values:
+                            metrics["throughput"] = round(
+                                statistics.mean(summary_tp_values), 4
+                            )
                     # Agregar throughput promedio de summaries
                     avg_tp = statistics.mean(
                         s.get("throughput_ops_per_second", 0) for s in summaries.values()
@@ -244,14 +288,29 @@ class BenchmarkAnalyzer:
             hotspot_arch = hotspot_base / arch
 
             if normal_arch.exists():
+                normal_summaries = load_all_summaries(normal_arch)
                 for result_list in load_all_results(normal_arch).values():
                     normal_results_all.extend(result_list)
+            else:
+                normal_summaries = {}
             if hotspot_arch.exists():
+                hotspot_summaries = load_all_summaries(hotspot_arch)
                 for result_list in load_all_results(hotspot_arch).values():
                     hotspot_results_all.extend(result_list)
+            else:
+                hotspot_summaries = {}
 
-            arch_data["normal"] = self.calculate_metrics(normal_results_all)
-            arch_data["hotspot"] = self.calculate_metrics(hotspot_results_all)
+            normal_metrics = self.calculate_metrics(normal_results_all)
+            hotspot_metrics = self.calculate_metrics(hotspot_results_all)
+
+            arch_data["normal"] = self._merge_summary_metrics(
+                normal_metrics,
+                next(iter(normal_summaries.values()), {}),
+            )
+            arch_data["hotspot"] = self._merge_summary_metrics(
+                hotspot_metrics,
+                next(iter(hotspot_summaries.values()), {}),
+            )
 
             # Calcular degradacion
             normal_tp = arch_data["normal"].get("throughput", 0)
