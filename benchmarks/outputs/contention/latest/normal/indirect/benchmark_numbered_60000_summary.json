@@ -1,18 +1,18 @@
 {
   "total_operations": 25997,
-  "total_time_seconds": 417.6005,
-  "throughput_ops_per_second": 62.2533,
-  "average_latency_ms": 800.8402,
+  "total_time_seconds": 295.9586,
+  "throughput_ops_per_second": 87.84,
+  "average_latency_ms": 113.6026,
   "accepted": 20000,
   "rejected": 5997,
   "duplicates": 0,
   "transport_errors": 0,
   "http_status_counts": {
-    "409": 5997,
-    "200": 20000
+    "200": 20000,
+    "409": 5997
   },
   "reason_counts": {
-    "seat_already_sold": 5997,
-    "ok": 20000
+    "ok": 20000,
+    "seat_already_sold": 5997
   }
 }

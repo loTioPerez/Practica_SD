@@ -1,55 +1,62 @@
 # Sistema Escalable de Adquisicion de Entradas
 
-Esqueleto inicial del proyecto para la practica de sistemas distribuidos.
+Implementacion de la practica de sistemas distribuidos con dos arquitecturas:
 
-En este punto solo se ha definido la estructura base del repositorio. No hay
-logica de negocio implementada todavia.
+- **Directa**: cliente -> NGINX -> API REST -> Redis
+- **Indirecta**: cliente -> gateway -> RabbitMQ -> workers -> Redis
 
-## Estructura elegida
+El sistema soporta entradas no numeradas y numeradas, mantiene idempotencia por
+`request_id` y compara rendimiento, contencion y escalabilidad bajo carga.
 
-El repositorio combina dos objetivos:
+## Estructura util del repositorio
 
-- un nucleo compartido para no duplicar la logica de venta
-- una organizacion fuerte para despliegue, benchmarks, analisis y memoria
+- `src/concert_ticketing/`: codigo de aplicacion, adaptadores y puntos de entrada
+- `scripts/`: arranque, parada, benchmarks, reseteo y generacion de reportes
+- `tools/local_dev/`: Docker Compose y `seed_state.py` para Redis y RabbitMQ
+- `deploy/nginx/`: configuracion del balanceador REST
+- `deploy/rabbitmq/`: artefactos auxiliares de RabbitMQ
+- `benchmarks/input/`: benchmarks base entregados
+- `benchmarks/generated/`: generacion del benchmark hotspot
+- `benchmarks/outputs/`: resultados finales, graficos y reportes
+- `docs/`: troubleshooting puntual
 
-Las piezas principales son:
+## Resultados finales
 
-- `src/concert_ticketing/core/`: dominio, servicios y puertos
-- `src/concert_ticketing/adapters/`: REST, RabbitMQ, persistencia y observabilidad
-- `src/concert_ticketing/apps/`: puntos de entrada ejecutables
-- `docs/`: arquitectura, runbooks y material de la memoria
-- `deploy/`: AWS, systemd, NGINX y RabbitMQ
-- `benchmarks/`: entradas originales, escenarios generados y salidas
-- `metrics/` y `logs/`: artefactos de ejecucion
-- `tests/`: pruebas unitarias, de integracion, smoke y stress
+Los artefactos canonicos de la entrega estan en:
 
-## Decision arquitectonica
+- `benchmarks/outputs/direct/`
+- `benchmarks/outputs/indirect/`
+- `benchmarks/outputs/scalability/latest/`
+- `benchmarks/outputs/contention/latest/normal/`
+- `benchmarks/outputs/contention/latest/hotspot/`
+- `benchmarks/outputs/dynamic_scaling/latest/`
+- `benchmarks/outputs/plots/`
+- `benchmarks/outputs/reports/`
 
-La comparacion entre arquitectura directa e indirecta debe hacerse sobre la
-misma logica de negocio. Por eso se mantiene un paquete Python comun,
-`concert_ticketing`, y se separan claramente:
+El reporte final generado queda en:
 
-- `core/` para las reglas del sistema
-- `ports/` para las interfaces de acceso a infraestructura
-- `adapters/` para las implementaciones concretas
-- `apps/` para ensamblar cada servicio ejecutable
+- `benchmarks/outputs/reports/benchmark_report.html`
+- `benchmarks/outputs/reports/benchmark_report.md`
+- `benchmarks/outputs/reports/summary_table.json`
 
-## Simplificacion aplicada
+## Ejecucion rapida
 
-Para que el proyecto sea mas facil de entender y mantener desde el principio,
-la estructura se ha simplificado con estos criterios:
+Desde la raiz del proyecto:
 
-- Redis queda como backend principal de consistencia.
-- PostgreSQL se elimina por ahora para no abrir una segunda linea tecnica.
-- El dominio se mantiene ligero: `models.py` y `enums.py` en vez de una
-  separacion mas ceremoniosa.
-- La mensajeria RabbitMQ se trata como infraestructura de entrada, no como una
-  abstraccion adicional dentro del core.
-- La API REST construye la aplicacion mediante `app_factory.py` para evitar
-  duplicidad de `main.py`.
+```bash
+bash scripts/start_all.sh
+bash scripts/verify_system.sh
+bash scripts/stop_all.sh
+```
 
-## Estado actual
+Para regenerar el reporte a partir de los resultados de `benchmarks/outputs/`:
 
-- La estructura del proyecto ya esta preparada.
-- La documentacion base se ha dejado en espanol.
-- Los archivos son placeholders y serviran como mapa para el desarrollo.
+```bash
+bash scripts/generate_report.sh benchmarks/outputs
+```
+
+## Notas
+
+- Redis es el backend de consistencia del sistema.
+- RabbitMQ se usa exclusivamente en la arquitectura indirecta.
+- La practica se valido tanto en local como en un despliegue distribuido en LAN.

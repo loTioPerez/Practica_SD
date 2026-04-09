@@ -1,8 +1,8 @@
 {
   "total_operations": 20000,
-  "total_time_seconds": 196.8275,
-  "throughput_ops_per_second": 101.6118,
-  "average_latency_ms": 477.7992,
+  "total_time_seconds": 201.9156,
+  "throughput_ops_per_second": 99.0513,
+  "average_latency_ms": 99.9876,
   "accepted": 20000,
   "rejected": 0,
   "duplicates": 0,

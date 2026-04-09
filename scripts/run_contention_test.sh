@@ -52,7 +52,7 @@ run_benchmark() {
         --concurrency "$CONCURRENCY" \
         --timeout "$TIMEOUT" \
         --output-dir "$output_dir" \
-        2>&1 | tee "${output_dir}/contention_${arch}_${scenario}.log"
+        2>&1 | tee "${LOGS_DIR}/contention_${arch}_${scenario}.log"
 }
 
 restart_stack() {

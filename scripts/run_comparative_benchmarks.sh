@@ -5,6 +5,7 @@
 # arquitecturas con diferentes configuraciones de workers.
 # =================================================================
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
 
 # ---- Configuracion ----
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -48,6 +49,16 @@ log_ok()    { echo -e "${GREEN}[OK]${NC}    $(date '+%H:%M:%S') $*"; }
 log_warn()  { echo -e "${YELLOW}[WARN]${NC}  $(date '+%H:%M:%S') $*"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $(date '+%H:%M:%S') $*"; }
 
+restart_stack() {
+    local worker_count="$1"
+    bash "${SCRIPT_DIR}/stop_all.sh"
+    WORKER_COUNT="$worker_count" bash "${SCRIPT_DIR}/start_all.sh"
+}
+
+reset_state_between_runs() {
+    bash "${SCRIPT_DIR}/reset_state.sh"
+}
+
 run_benchmark() {
     local arch="$1"        # direct | indirect
     local benchmark="$2"   # ruta al fichero benchmark
@@ -76,7 +87,7 @@ run_benchmark() {
         --concurrency "$CONCURRENCY" \
         --timeout "$TIMEOUT" \
         --output-dir "$output_dir" \
-        2>&1 | tee "${output_dir}/${bench_name}_${arch}_w${workers}.log"
+        2>&1 | tee "${LOGS_DIR}/${bench_name}_${arch}_w${workers}.log"
 
     log_ok "  Completado: ${bench_name} (${arch}, ${workers} workers)"
 }
@@ -85,6 +96,7 @@ run_benchmark() {
 echo "============================================================"
 echo "  BENCHMARKS COMPARATIVOS - ${TIMESTAMP}"
 echo "============================================================"
+check_requirements
 log_info "Directorio de salida: ${OUTPUT_BASE}"
 log_info "Workers a probar: ${WORKERS[*]}"
 log_info "Concurrencia: ${CONCURRENCY}"
@@ -114,9 +126,11 @@ for num_workers in "${WORKERS[@]}"; do
 
     WORKER_DIR="${OUTPUT_BASE}/workers_${num_workers}"
     mkdir -p "${WORKER_DIR}/direct" "${WORKER_DIR}/indirect"
+    restart_stack "$num_workers"
 
     # Direct - Unnumbered
     if [ -f "$BENCHMARK_UNNUMBERED" ]; then
+        reset_state_between_runs
         log_info "[Direct] Benchmark unnumbered con ${num_workers} workers"
         run_benchmark "direct" "$BENCHMARK_UNNUMBERED" "$num_workers" "${WORKER_DIR}/direct" || \
             log_warn "Benchmark direct unnumbered fallo (workers=${num_workers})"
@@ -126,6 +140,7 @@ for num_workers in "${WORKERS[@]}"; do
 
     # Direct - Numbered
     if [ -f "$BENCHMARK_NUMBERED" ]; then
+        reset_state_between_runs
         log_info "[Direct] Benchmark numbered con ${num_workers} workers"
         run_benchmark "direct" "$BENCHMARK_NUMBERED" "$num_workers" "${WORKER_DIR}/direct" || \
             log_warn "Benchmark direct numbered fallo (workers=${num_workers})"
@@ -135,6 +150,7 @@ for num_workers in "${WORKERS[@]}"; do
 
     # Indirect - Unnumbered
     if [ -f "$BENCHMARK_UNNUMBERED" ]; then
+        reset_state_between_runs
         log_info "[Indirect] Benchmark unnumbered con ${num_workers} workers"
         run_benchmark "indirect" "$BENCHMARK_UNNUMBERED" "$num_workers" "${WORKER_DIR}/indirect" || \
             log_warn "Benchmark indirect unnumbered fallo (workers=${num_workers})"
@@ -144,6 +160,7 @@ for num_workers in "${WORKERS[@]}"; do
 
     # Indirect - Numbered
     if [ -f "$BENCHMARK_NUMBERED" ]; then
+        reset_state_between_runs
         log_info "[Indirect] Benchmark numbered con ${num_workers} workers"
         run_benchmark "indirect" "$BENCHMARK_NUMBERED" "$num_workers" "${WORKER_DIR}/indirect" || \
             log_warn "Benchmark indirect numbered fallo (workers=${num_workers})"

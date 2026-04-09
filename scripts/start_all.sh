@@ -139,7 +139,7 @@ else
     echo -e "  ${YELLOW}○${NC} NGINX (balanceo)  → NO activo (usa :8000 o :8001)"
 fi
 echo -e "  ${GREEN}●${NC} Gateway Indirecto → http://localhost:8080"
-echo -e "  ${GREEN}●${NC} Workers           → 3 instancias"
+echo -e "  ${GREEN}●${NC} Workers           → ${WORKER_COUNT} instancias"
 echo ""
 echo -e "  ${CYAN}Logs:${NC}  $LOGS_DIR/"
 echo -e "  ${CYAN}PIDs:${NC}  $PIDS_DIR/"

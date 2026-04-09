@@ -74,7 +74,7 @@ python3 -m concert_ticketing.apps.benchmark_runner.main \
     --concurrency "$CONCURRENCY" \
     --timeout "$TIMEOUT" \
     --output-dir "$OUTPUT_BASE" \
-    > "${OUTPUT_BASE}/dynamic_scaling.log" 2>&1 &
+    > "${LOGS_DIR}/dynamic_scaling.log" 2>&1 &
 BENCHMARK_PID=$!
 
 log_info "Benchmark lanzado en background (PID ${BENCHMARK_PID})"

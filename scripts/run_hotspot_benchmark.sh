@@ -8,7 +8,7 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 DIRECT_BASE_URL="${DIRECT_BASE_URL:-http://localhost}"
 INDIRECT_BASE_URL="${INDIRECT_BASE_URL:-http://localhost:8080}"
 HOTSPOT_BENCHMARK="${HOTSPOT_BENCHMARK:-${PROJECT_ROOT}/benchmarks/generated/hotspot_benchmark.txt}"
-OUTPUT_BASE="${PROJECT_ROOT}/benchmarks/outputs/hotspot/latest"
+OUTPUT_BASE="${PROJECT_ROOT}/benchmarks/outputs/contention/latest/hotspot"
 CONCURRENCY="${BENCHMARK_CONCURRENCY:-50}"
 TIMEOUT="${BENCHMARK_TIMEOUT:-60}"
 TOTAL_OPS="${HOTSPOT_TOTAL_OPS:-60000}"
@@ -33,7 +33,7 @@ run_single_benchmark() {
         --concurrency "$CONCURRENCY" \
         --timeout "$TIMEOUT" \
         --output-dir "$output_dir" \
-        2>&1 | tee "${output_dir}/hotspot_${arch}.log"
+        2>&1 | tee "${LOGS_DIR}/hotspot_${arch}.log"
 }
 
 restart_stack() {

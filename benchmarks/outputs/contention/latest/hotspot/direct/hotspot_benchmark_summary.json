@@ -1,19 +1,18 @@
 {
   "total_operations": 60000,
-  "total_time_seconds": 670.5371,
-  "throughput_ops_per_second": 89.4805,
-  "average_latency_ms": 548.0117,
-  "accepted": 9683,
-  "rejected": 48337,
+  "total_time_seconds": 573.0735,
+  "throughput_ops_per_second": 104.6986,
+  "average_latency_ms": 94.2624,
+  "accepted": 9890,
+  "rejected": 50110,
   "duplicates": 0,
-  "transport_errors": 1980,
+  "transport_errors": 0,
   "http_status_counts": {
-    "200": 9683,
-    "409": 48337,
-    "0": 1980
+    "200": 9890,
+    "409": 50110
   },
   "reason_counts": {
-    "ok": 9683,
-    "seat_already_sold": 48337
+    "ok": 9890,
+    "seat_already_sold": 50110
   }
 }

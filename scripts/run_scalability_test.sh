@@ -52,7 +52,7 @@ run_single_benchmark() {
         --concurrency "$CONCURRENCY" \
         --timeout "$TIMEOUT" \
         --output-dir "$output_dir" \
-        2>&1 | tee "${output_dir}/scalability_${arch}_w${workers}.log"
+        2>&1 | tee "${LOGS_DIR}/scalability_${arch}_w${workers}.log"
 }
 
 restart_stack() {

@@ -1,7 +1,0 @@
-2026-04-06 22:22:12,802 | concert_ticketing.adapters.api.rest.app_factory | INFO | Aplicacion REST creada
-INFO:     Started server process [13980]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-2026-04-06 22:22:13,319 | concert_ticketing.adapters.api.rest.middleware | INFO | GET /health -> 200 (27.82 ms)
-INFO:     127.0.0.1:52321 - "GET /health HTTP/1.1" 200 OK
