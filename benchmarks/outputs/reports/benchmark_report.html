@@ -32,7 +32,7 @@
 </head>
 <body>
     <h1>Benchmark Comparison Report</h1>
-    <p class="timestamp">Generated: 2026-04-09 22:39:59 UTC</p>
+    <p class="timestamp">Generated: 2026-04-10 15:58:46 UTC</p>
     <nav>
         <a href="#executive-summary">Summary</a>
         <a href="#summary-table">Table</a>
@@ -61,34 +61,34 @@
 <h2>Summary Table</h2>
 <table>
 <tr><th>Benchmark</th><th>Architecture</th><th>Throughput (ops/s)</th><th>Latency Mean (ms)</th><th>P95 (ms)</th><th>P99 (ms)</th><th>Success Rate</th><th>Error Rate</th></tr>
-<tr><td>benchmark_unnumbered_20000</td><td>direct</td><td>97.05</td><td>101.48</td><td>106.65</td><td>298.08</td><td>100%</td><td>0%</td></tr>
-<tr><td>benchmark_unnumbered_20000</td><td>indirect</td><td>62.22</td><td>160.37</td><td>384.51</td><td>638.56</td><td>100%</td><td>0%</td></tr>
 <tr><td>benchmark_numbered_60000</td><td>direct</td><td>94.44</td><td>103.13</td><td>226.18</td><td>445.85</td><td>76.93%</td><td>0%</td></tr>
 <tr><td>benchmark_numbered_60000</td><td>indirect</td><td>59.18</td><td>168.64</td><td>382.37</td><td>1,116.41</td><td>76.93%</td><td>0%</td></tr>
+<tr><td>benchmark_unnumbered_20000</td><td>direct</td><td>97.05</td><td>101.48</td><td>106.65</td><td>298.08</td><td>100%</td><td>0%</td></tr>
+<tr><td>benchmark_unnumbered_20000</td><td>indirect</td><td>62.22</td><td>160.37</td><td>384.51</td><td>638.56</td><td>100%</td><td>0%</td></tr>
 </table>
 </section>
 <section id="direct-results">
 <h2>Direct Architecture Results</h2>
 <table>
 <tr><th>Benchmark</th><th>Throughput</th><th>Latency Mean</th><th>P50</th><th>P95</th><th>P99</th><th>Accepted</th><th>Rejected</th></tr>
-<tr><td>benchmark_unnumbered_20000</td><td>97.05 ops/s</td><td>101.48 ms</td><td>42.29 ms</td><td>106.65 ms</td><td>298.08 ms</td><td>20,000</td><td>0</td></tr>
 <tr><td>benchmark_numbered_60000</td><td>94.44 ops/s</td><td>103.13 ms</td><td>75.70 ms</td><td>226.18 ms</td><td>445.85 ms</td><td>20,000</td><td>5,997</td></tr>
+<tr><td>benchmark_unnumbered_20000</td><td>97.05 ops/s</td><td>101.48 ms</td><td>42.29 ms</td><td>106.65 ms</td><td>298.08 ms</td><td>20,000</td><td>0</td></tr>
 </table>
 </section>
 <section id="indirect-results">
 <h2>Indirect Architecture Results</h2>
 <table>
 <tr><th>Benchmark</th><th>Throughput</th><th>Latency Mean</th><th>P50</th><th>P95</th><th>P99</th><th>Accepted</th><th>Rejected</th></tr>
-<tr><td>benchmark_unnumbered_20000</td><td>62.22 ops/s</td><td>160.37 ms</td><td>123.83 ms</td><td>384.51 ms</td><td>638.56 ms</td><td>20,000</td><td>0</td></tr>
 <tr><td>benchmark_numbered_60000</td><td>59.18 ops/s</td><td>168.64 ms</td><td>121.26 ms</td><td>382.37 ms</td><td>1,116.41 ms</td><td>20,000</td><td>5,997</td></tr>
+<tr><td>benchmark_unnumbered_20000</td><td>62.22 ops/s</td><td>160.37 ms</td><td>123.83 ms</td><td>384.51 ms</td><td>638.56 ms</td><td>20,000</td><td>0</td></tr>
 </table>
 </section>
 <section id="comparative">
 <h2>Comparative Analysis</h2>
 <table>
 <tr><th>Benchmark</th><th>Direct Throughput</th><th>Indirect Throughput</th><th>Ratio</th><th>Direct Latency</th><th>Indirect Latency</th></tr>
-<tr><td>benchmark_unnumbered_20000</td><td>97.05 ops/s</td><td>62.22 ops/s</td><td>1.5598</td><td>101.48 ms</td><td>160.37 ms</td></tr>
 <tr><td>benchmark_numbered_60000</td><td>94.44 ops/s</td><td>59.18 ops/s</td><td>1.5957</td><td>103.13 ms</td><td>168.64 ms</td></tr>
+<tr><td>benchmark_unnumbered_20000</td><td>97.05 ops/s</td><td>62.22 ops/s</td><td>1.5598</td><td>101.48 ms</td><td>160.37 ms</td></tr>
 </table>
 </section>
 <section id="scalability">
@@ -125,17 +125,17 @@
 <section id="plots">
 <h2>Plots</h2>
 <h3>Throughput Comparison</h3>
-<img src="plots\throughput_comparison.png" alt="Throughput Comparison">
+<img src="../plots/throughput_comparison.png" alt="Throughput Comparison">
 <h3>Latency Distribution</h3>
-<img src="plots\latency_distribution.png" alt="Latency Distribution">
+<img src="../plots/latency_distribution.png" alt="Latency Distribution">
 <h3>Scalability</h3>
-<img src="plots\scalability.png" alt="Scalability">
+<img src="../plots/scalability.png" alt="Scalability">
 <h3>Ticket Type Comparison</h3>
-<img src="plots\ticket_type_comparison.png" alt="Ticket Type Comparison">
+<img src="../plots/ticket_type_comparison.png" alt="Ticket Type Comparison">
 <h3>Contention Impact</h3>
-<img src="plots\contention_impact.png" alt="Contention Impact">
+<img src="../plots/contention_impact.png" alt="Contention Impact">
 <h3>Success Failure Breakdown</h3>
-<img src="plots\success_failure_breakdown.png" alt="Success Failure Breakdown">
+<img src="../plots/success_failure_breakdown.png" alt="Success Failure Breakdown">
 </section>
 <section id="conclusions">
 <h2>Conclusions</h2>

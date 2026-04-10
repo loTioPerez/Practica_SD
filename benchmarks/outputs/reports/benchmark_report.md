@@ -1,6 +1,6 @@
 # Benchmark Comparison Report
 
-> Generado: 2026-04-09 22:39:59 UTC
+> Generado: 2026-04-10 15:58:46 UTC
 
 ## Executive Summary
 
@@ -45,25 +45,12 @@
 
 | Benchmark | Architecture | Throughput (ops/s) | Latency Mean (ms) | P95 (ms) | P99 (ms) | Success Rate | Error Rate |
 |-----------|-------------|-------------------|-------------------|----------|----------|-------------|------------|
-| benchmark_unnumbered_20000 | direct | 97.05 | 101.48 | 106.65 | 298.08 | 100% | 0% |
-| benchmark_unnumbered_20000 | indirect | 62.22 | 160.37 | 384.51 | 638.56 | 100% | 0% |
 | benchmark_numbered_60000 | direct | 94.44 | 103.13 | 226.18 | 445.85 | 76.93% | 0% |
 | benchmark_numbered_60000 | indirect | 59.18 | 168.64 | 382.37 | 1,116.41 | 76.93% | 0% |
+| benchmark_unnumbered_20000 | direct | 97.05 | 101.48 | 106.65 | 298.08 | 100% | 0% |
+| benchmark_unnumbered_20000 | indirect | 62.22 | 160.37 | 384.51 | 638.56 | 100% | 0% |
 
 ## Direct Architecture Results
-
-### benchmark_unnumbered_20000
-
-| Metric | Value |
-|--------|-------|
-| Throughput | 97.05 ops/s |
-| Latency (mean) | 101.48 ms |
-| LATENCY P50 | 42.29 ms |
-| LATENCY P95 | 106.65 ms |
-| LATENCY P99 | 298.08 ms |
-| Accepted | 20,000 |
-| Rejected | 0 |
-| Success Rate | 100% |
 
 ### benchmark_numbered_60000
 
@@ -78,20 +65,20 @@
 | Rejected | 5,997 |
 | Success Rate | 76.93% |
 
-## Indirect Architecture Results
-
 ### benchmark_unnumbered_20000
 
 | Metric | Value |
 |--------|-------|
-| Throughput | 62.22 ops/s |
-| Latency (mean) | 160.37 ms |
-| LATENCY P50 | 123.83 ms |
-| LATENCY P95 | 384.51 ms |
-| LATENCY P99 | 638.56 ms |
+| Throughput | 97.05 ops/s |
+| Latency (mean) | 101.48 ms |
+| LATENCY P50 | 42.29 ms |
+| LATENCY P95 | 106.65 ms |
+| LATENCY P99 | 298.08 ms |
 | Accepted | 20,000 |
 | Rejected | 0 |
 | Success Rate | 100% |
+
+## Indirect Architecture Results
 
 ### benchmark_numbered_60000
 
@@ -106,14 +93,27 @@
 | Rejected | 5,997 |
 | Success Rate | 76.93% |
 
+### benchmark_unnumbered_20000
+
+| Metric | Value |
+|--------|-------|
+| Throughput | 62.22 ops/s |
+| Latency (mean) | 160.37 ms |
+| LATENCY P50 | 123.83 ms |
+| LATENCY P95 | 384.51 ms |
+| LATENCY P99 | 638.56 ms |
+| Accepted | 20,000 |
+| Rejected | 0 |
+| Success Rate | 100% |
+
 ## Comparative Analysis
 
 ### Direct vs Indirect
 
 | Benchmark | Direct Throughput | Indirect Throughput | Ratio | Direct Latency | Indirect Latency |
 |-----------|------------------|--------------------|---------|-----------------|--------------------|
-| benchmark_unnumbered_20000 | 97.05 | 62.22 | 1.5598 | 101.48ms | 160.37ms |
 | benchmark_numbered_60000 | 94.44 | 59.18 | 1.5957 | 103.13ms | 168.64ms |
+| benchmark_unnumbered_20000 | 97.05 | 62.22 | 1.5598 | 101.48ms | 160.37ms |
 
 ## Scalability Analysis
 
@@ -152,27 +152,27 @@
 
 ### Throughput Comparison
 
-![Throughput Comparison](plots\throughput_comparison.png)
+![Throughput Comparison](../plots/throughput_comparison.png)
 
 ### Latency Distribution
 
-![Latency Distribution](plots\latency_distribution.png)
+![Latency Distribution](../plots/latency_distribution.png)
 
 ### Scalability
 
-![Scalability](plots\scalability.png)
+![Scalability](../plots/scalability.png)
 
 ### Ticket Type Comparison
 
-![Ticket Type Comparison](plots\ticket_type_comparison.png)
+![Ticket Type Comparison](../plots/ticket_type_comparison.png)
 
 ### Contention Impact
 
-![Contention Impact](plots\contention_impact.png)
+![Contention Impact](../plots/contention_impact.png)
 
 ### Success Failure Breakdown
 
-![Success Failure Breakdown](plots\success_failure_breakdown.png)
+![Success Failure Breakdown](../plots/success_failure_breakdown.png)
 
 ## Conclusions
 

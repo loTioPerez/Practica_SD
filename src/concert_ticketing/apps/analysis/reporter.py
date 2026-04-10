@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import html
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -418,11 +419,7 @@ class BenchmarkReporter:
         lines: list[str] = []
         for plot_path in plots:
             name = Path(plot_path).stem.replace("_", " ").title()
-            # Ruta relativa desde reports a plots
-            try:
-                rel_path = Path(plot_path).relative_to(self.output_dir.parent)
-            except ValueError:
-                rel_path = Path(plot_path)
+            rel_path = self._relative_asset_path(plot_path)
             lines.append(f"### {name}\n")
             lines.append(f"![{name}]({rel_path})\n")
         return "\n".join(lines)
@@ -651,13 +648,18 @@ class BenchmarkReporter:
         rows: list[str] = []
         for plot_path in plots:
             name = Path(plot_path).stem.replace("_", " ").title()
-            try:
-                rel_path = Path(plot_path).relative_to(self.output_dir.parent)
-            except ValueError:
-                rel_path = Path(plot_path)
+            rel_path = self._relative_asset_path(plot_path)
             rows.append(f"<h3>{html.escape(name)}</h3>")
-            rows.append(f'<img src="{html.escape(str(rel_path))}" alt="{html.escape(name)}">')
+            rows.append(f'<img src="{html.escape(rel_path)}" alt="{html.escape(name)}">')
         return "\n".join(rows)
+
+    def _relative_asset_path(self, asset_path: str | Path) -> str:
+        """Calcula la ruta relativa correcta desde `reports/` hacia un asset."""
+        try:
+            relative = os.path.relpath(Path(asset_path), start=self.output_dir)
+            return Path(relative).as_posix()
+        except ValueError:
+            return Path(asset_path).as_posix()
 
     @staticmethod
     def _md_to_html_paragraphs(md_text: str) -> str:

@@ -19,14 +19,25 @@ PY_SCALABILITY_DIR="${OUTPUT_BASE}/scalability/latest"
 PY_CONTENTION_NORMAL_DIR="${OUTPUT_BASE}/contention/latest/normal"
 PY_CONTENTION_HOTSPOT_DIR="${OUTPUT_BASE}/contention/latest/hotspot"
 
-if command -v cygpath >/dev/null 2>&1; then
-    PY_OUTPUT_BASE="$(cygpath -w "$OUTPUT_BASE")"
-    PY_PLOTS_DIR="$(cygpath -w "$PLOTS_DIR")"
-    PY_REPORTS_DIR="$(cygpath -w "$REPORTS_DIR")"
-    PY_SCALABILITY_DIR="$(cygpath -w "$PY_SCALABILITY_DIR")"
-    PY_CONTENTION_NORMAL_DIR="$(cygpath -w "$PY_CONTENTION_NORMAL_DIR")"
-    PY_CONTENTION_HOTSPOT_DIR="$(cygpath -w "$PY_CONTENTION_HOTSPOT_DIR")"
-fi
+to_python_path_safe() {
+    local path="$1"
+    local converted=""
+    if command -v cygpath >/dev/null 2>&1; then
+        converted="$(cygpath -w "$path" 2>/dev/null || true)"
+    fi
+    if [[ -n "$converted" ]]; then
+        echo "$converted"
+    else
+        echo "$path"
+    fi
+}
+
+PY_OUTPUT_BASE="$(to_python_path_safe "$OUTPUT_BASE")"
+PY_PLOTS_DIR="$(to_python_path_safe "$PLOTS_DIR")"
+PY_REPORTS_DIR="$(to_python_path_safe "$REPORTS_DIR")"
+PY_SCALABILITY_DIR="$(to_python_path_safe "$PY_SCALABILITY_DIR")"
+PY_CONTENTION_NORMAL_DIR="$(to_python_path_safe "$PY_CONTENTION_NORMAL_DIR")"
+PY_CONTENTION_HOTSPOT_DIR="$(to_python_path_safe "$PY_CONTENTION_HOTSPOT_DIR")"
 
 # Colores
 GREEN='\033[0;32m'

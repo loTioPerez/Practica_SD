@@ -116,33 +116,65 @@ class BenchmarkPlotter:
         Returns:
             Ruta al fichero generado.
         """
-        fig, axes = plt.subplots(1, 2, figsize=FIGSIZE_WIDE, sharey=True)
+        fig, axes = plt.subplots(1, 2, figsize=FIGSIZE_WIDE)
 
         for ax, latencies, label, color in [
             (axes[0], direct_latencies, "Direct", COLORS["direct"]),
             (axes[1], indirect_latencies, "Indirect", COLORS["indirect"]),
         ]:
             if latencies:
-                n_bins = min(50, max(10, len(latencies) // 100))
-                ax.hist(latencies, bins=n_bins, color=color, alpha=0.7,
-                        edgecolor="white", linewidth=0.5)
+                display = self._prepare_latency_display(latencies)
+                display_latencies = display["latencies"]
+                display_limit = display["x_limit"]
 
-                # Lineas de percentiles
-                if len(latencies) >= 2:
-                    import statistics
-                    quantiles = statistics.quantiles(latencies, n=100)
-                    p50 = quantiles[49] if len(quantiles) > 49 else latencies[0]
-                    p95 = quantiles[94] if len(quantiles) > 94 else latencies[-1]
-                    p99 = quantiles[98] if len(quantiles) > 98 else latencies[-1]
+                n_bins = min(40, max(18, int(np.sqrt(len(display_latencies)) // 2)))
+                bins = np.linspace(0, display_limit, n_bins)
+                ax.hist(
+                    display_latencies,
+                    bins=bins,
+                    color=color,
+                    alpha=0.75,
+                    edgecolor="white",
+                    linewidth=0.5,
+                )
 
-                    for pval, plabel, ls in [
-                        (p50, "P50", "--"), (p95, "P95", "-."), (p99, "P99", ":")
-                    ]:
-                        ax.axvline(pval, color="red", linestyle=ls, linewidth=1.5,
-                                   label=f"{plabel}: {pval:.1f}ms")
+                for pval, plabel, ls in [
+                    (display["p50"], "P50", "--"),
+                    (display["p95"], "P95", "-."),
+                    (display["p99"], "P99", ":"),
+                ]:
+                    ax.axvline(
+                        pval,
+                        color="red",
+                        linestyle=ls,
+                        linewidth=1.5,
+                        label=f"{plabel}: {pval:.1f}ms",
+                    )
+
+                ax.set_xlim(0, display_limit * 1.02)
+                if display["truncated"] > 0:
+                    ax.text(
+                        0.98,
+                        0.80,
+                        f"Mostrando hasta {display_limit:.0f}ms\n"
+                        f"Outliers ocultos: {display['truncated']}",
+                        transform=ax.transAxes,
+                        ha="right",
+                        va="top",
+                        fontsize=8,
+                        bbox={
+                            "boxstyle": "round,pad=0.25",
+                            "facecolor": "white",
+                            "edgecolor": "#cccccc",
+                            "alpha": 0.85,
+                        },
+                    )
 
             ax.set_title(f"{label}", fontsize=12, fontweight="bold")
             ax.set_xlabel("Latencia (ms)", fontsize=10)
+            ax.yaxis.set_major_formatter(
+                ticker.FuncFormatter(lambda val, _: f"{val:,.0f}")
+            )
             ax.legend(fontsize=9)
 
         axes[0].set_ylabel("Frecuencia", fontsize=10)
@@ -169,6 +201,8 @@ class BenchmarkPlotter:
         fig, ax = plt.subplots(figsize=FIGSIZE_STANDARD)
 
         has_data = False
+        all_workers: set[int] = set()
+        all_throughputs: list[float] = []
         for arch, color, marker in [
             ("direct", COLORS["direct"], "o"),
             ("indirect", COLORS["indirect"], "s"),
@@ -183,43 +217,35 @@ class BenchmarkPlotter:
                 for w in workers
             ]
 
-            if any(t > 0 for t in throughputs):
+            series = [(worker, tp) for worker, tp in zip(workers, throughputs) if tp > 0]
+            if series:
                 has_data = True
-                ax.plot(workers, throughputs, f"-{marker}", color=color,
-                       label=arch.capitalize(), linewidth=2, markersize=8)
-
-        if has_data:
-            # Linea de escalamiento ideal
-            all_workers = set()
-            for arch_data in scalability_data.values():
-                if isinstance(arch_data, dict):
-                    all_workers.update(arch_data.keys())
-            if all_workers:
-                workers_sorted = sorted(all_workers)
-                min_workers = workers_sorted[0]
-                # Usar el throughput mas alto del worker minimo como base
-                base_tp = 0
-                for arch_data in scalability_data.values():
-                    if isinstance(arch_data, dict) and min_workers in arch_data:
-                        tp = arch_data[min_workers].get(
-                            "throughput",
-                            arch_data[min_workers].get("avg_throughput_from_summaries", 0)
-                        )
-                        base_tp = max(base_tp, tp)
-
-                if base_tp > 0:
-                    ideal = [base_tp * (w / min_workers) for w in workers_sorted]
-                    ax.plot(workers_sorted, ideal, "--", color=COLORS["ideal"],
-                           label="Escalado ideal", linewidth=1.5, alpha=0.7)
+                series_workers, series_tp = zip(*series)
+                all_workers.update(series_workers)
+                all_throughputs.extend(series_tp)
+                ax.plot(
+                    series_workers,
+                    series_tp,
+                    f"-{marker}",
+                    color=color,
+                    label=arch.capitalize(),
+                    linewidth=2.5,
+                    markersize=8,
+                )
+                self._annotate_line_points(ax, series_workers, series_tp, color)
 
         ax.set_xlabel("Numero de Workers", fontsize=12)
         ax.set_ylabel("Throughput (ops/s)", fontsize=12)
         ax.set_title(title, fontsize=14, fontweight="bold")
-        ax.legend(fontsize=11)
+        if has_data:
+            ax.legend(fontsize=11)
         ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda val, _: f"{val:,.0f}"))
+        ax.grid(True, axis="y", alpha=0.35)
 
         if has_data:
             ax.set_xticks(sorted(all_workers))
+            ax.set_xlim(min(all_workers) - 0.2, max(all_workers) + 0.2)
+            ax.set_ylim(0, max(all_throughputs) * 1.18)
 
         fig.tight_layout()
         return self._save(fig, filename)
@@ -532,6 +558,44 @@ class BenchmarkPlotter:
                     ha="center", va="bottom",
                     fontsize=8,
                 )
+
+    @staticmethod
+    def _annotate_line_points(
+        ax: plt.Axes,
+        x_values: tuple[int, ...],
+        y_values: tuple[float, ...],
+        color: str,
+    ) -> None:
+        """Anade la etiqueta del valor a cada punto de una serie."""
+        for x_value, y_value in zip(x_values, y_values):
+            ax.annotate(
+                f"{y_value:.1f}",
+                xy=(x_value, y_value),
+                xytext=(0, 8),
+                textcoords="offset points",
+                ha="center",
+                va="bottom",
+                fontsize=8,
+                color=color,
+            )
+
+    @staticmethod
+    def _prepare_latency_display(latencies: list[float]) -> dict[str, Any]:
+        """Prepara una vista util de latencias, ocultando solo outliers extremos."""
+        latency_array = np.asarray(latencies, dtype=float)
+        p50, p95, p99, p995 = np.percentile(latency_array, [50, 95, 99, 99.5])
+        clip_limit = max(p99 * 1.2, p995 * 1.05)
+        x_limit = float(min(latency_array.max(), clip_limit))
+        display_latencies = latency_array[latency_array <= x_limit]
+
+        return {
+            "latencies": display_latencies,
+            "x_limit": x_limit,
+            "p50": float(p50),
+            "p95": float(p95),
+            "p99": float(p99),
+            "truncated": int(len(latency_array) - len(display_latencies)),
+        }
 
     @staticmethod
     def _format_labels(labels: list[str]) -> list[str]:
